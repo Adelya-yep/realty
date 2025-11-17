@@ -1,0 +1,43 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<h1>Сообщение</h1>
+
+<div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+        <div>
+            <p><strong>От:</strong> {{ message.sender.get_full_name|default:message.sender.username }}</p>
+            <p><strong>Кому:</strong> {{ message.receiver.get_full_name|default:message.receiver.username }}</p>
+        </div>
+        <div style="text-align: right;">
+            <p><strong>Дата:</strong> {{ message.created_at|date:"d.m.Y H:i" }}</p>
+            {% if message.is_read %}
+            <p><strong>Статус:</strong> Прочитано</p>
+            {% else %}
+            <p><strong>Статус:</strong> Не прочитано</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <h3>{{ message.subject }}</h3>
+    <div style="background: white; padding: 1rem; border-radius: 5px; margin-top: 1rem;">
+        {{ message.content|linebreaks }}
+    </div>
+</div>
+
+<div>
+    {% if user == message.receiver %}
+    <a href="{% url 'message_send' %}?to={{ message.sender.id }}&subject=Re: {{ message.subject }}" class="btn">
+        Ответить
+    </a>
+    {% endif %}
+    
+    <a href="{% url 'message_list' %}" class="btn">К списку сообщений</a>
+    
+    {% if user == message.receiver %}
+    <a href="{% url 'blacklist_add' message.sender.id %}" class="btn btn-danger" onclick="return confirm('Вы уверены, что хотите добавить этого пользователя в черный список?')">
+        Добавить в черный список
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<h1>Личные сообщения</h1>
+
+<div style="margin-bottom: 1rem;">
+    <a href="{% url 'message_send' %}" class="btn">Написать сообщение</a>
+</div>
+
+<div style="border: 1px solid #ddd; border-radius: 8px;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-bottom: 1px solid #eee; {% if not message.is_read and message.receiver == user %}background: #f0f8ff;{% endif %}">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>
+                    {% if message.sender == user %}
+                    → {{ message.receiver.get_full_name|default:message.receiver.username }}
+                    {% else %}
+                    ← {{ message.sender.get_full_name|default:message.sender.username }}
+                    {% endif %}
+                </strong>
+                <span style="margin-left: 1rem; font-weight: normal;">{{ message.subject }}</span>
+                {% if not message.is_read and message.receiver == user %}
+                <span style="background: #3498db; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">Новое</span>
+                {% endif %}
+            </div>
+            <div style="text-align: right;">
+                <small>{{ message.created_at|date:"d.m.Y H:i" }}</small>
+                <div style="margin-top: 0.5rem;">
+                    <a href="{% url 'message_detail' message.pk %}" class="btn">Просмотреть</a>
+                </div>
+            </div>
+        </div>
+        <p style="margin: 0.5rem 0 0 0; color: #666;">{{ message.content|truncatewords:20 }}</p>
+    </div>
+    {% empty %}
+    <div style="padding: 2rem; text-align: center;">
+        <p>У вас пока нет сообщений.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

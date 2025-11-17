@@ -1,0 +1,98 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<h1>Профиль пользователя</h1>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+    <div>
+        <div style="text-align: center;">
+            {% if user.avatar %}
+            <img src="{{ user.avatar.url }}" alt="Аватар" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover;">
+            {% else %}
+            <div style="width: 150px; height: 150px; background: #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                Нет аватара
+            </div>
+            {% endif %}
+            <h3>{{ user.get_full_name|default:user.username }}</h3>
+            <p>{{ user.get_user_type_display }}</p>
+        </div>
+    </div>
+
+    <div>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="id_first_name">Имя:</label>
+                    {{ form.first_name }}
+                </div>
+                
+                <div class="form-group">
+                    <label for="id_last_name">Фамилия:</label>
+                    {{ form.last_name }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_email">Email:</label>
+                {{ form.email }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_phone">Телефон:</label>
+                {{ form.phone }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_gender">Пол:</label>
+                {{ form.gender }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_bio">О себе:</label>
+                {{ form.bio }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_avatar">Аватар:</label>
+                {{ form.avatar }}
+            </div>
+
+            <button type="submit" class="btn">Сохранить изменения</button>
+        </form>
+    </div>
+</div>
+
+<!-- Объекты пользователя -->
+<div style="margin-top: 3rem;">
+    <h2>Мои объекты недвижимости</h2>
+    
+    <a href="{% url 'property_create' %}" class="btn">Добавить новый объект</a>
+    
+    <div class="property-grid" style="margin-top: 1rem;">
+        {% for property in properties %}
+        <div class="property-card">
+            {% with main_image=property.images.filter.is_main.first %}
+                {% if main_image %}
+                <img src="{{ main_image.image.url }}" alt="{{ property.title }}">
+                {% else %}
+                <div class="no-image">Нет изображения</div>
+                {% endif %}
+            {% endwith %}
+            <h3><a href="{% url 'property_detail' property.pk %}">{{ property.title }}</a></h3>
+            <p><strong>Цена:</strong> {{ property.price }} руб.</p>
+            <p><strong>Статус:</strong> {{ property.get_status_display }}</p>
+            <p><strong>Просмотров:</strong> {{ property.views }}</p>
+            <div style="margin-top: 1rem;">
+                <a href="{% url 'property_edit' property.pk %}" class="btn">Редактировать</a>
+            </div>
+        </div>
+        {% empty %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
+            <p>У вас пока нет объектов недвижимости.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

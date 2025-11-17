@@ -1,0 +1,23 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<h1>Добро пожаловать в Realty Site</h1>
+<p>Лучшие предложения недвижимости в одном месте</p>
+
+<h2>Последние объекты</h2>
+<div class="property-grid">
+    {% for property in properties %}
+    <div class="property-card">
+        {% with main_image=property.images.filter.is_main.first %}
+            {% if main_image %}
+            <img src="{{ main_image.image.url }}" alt="{{ property.title }}">
+            {% endif %}
+        {% endwith %}
+        <h3><a href="{% url 'property_detail' property.pk %}">{{ property.title }}</a></h3>
+        <p>Цена: {{ property.price }} руб.</p>
+        <p>Тип: {{ property.get_property_type_display }}</p>
+        <p>Площадь: {{ property.area }} кв.м</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
