@@ -1,11 +1,15 @@
 import json
 import random
 import string
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
-from .forms import CustomUserCreationForm
+from django.core.paginator import Paginator
+from .models import CustomUser, Property, Comment, Message, Blacklist, PropertyImage
+from .forms import CustomUserCreationForm, ProfileUpdateForm, PropertyForm, CommentForm, MessageForm
 
 
 def generate_captcha():
@@ -22,14 +26,12 @@ def register(request):
     if request.method == 'GET':
         # Проверка логина
         if 'check_username' in request.GET:
-            from .models import CustomUser
             username = request.GET.get('check_username')
             exists = CustomUser.objects.filter(username=username).exists()
             return JsonResponse({'exists': exists})
 
         # Проверка email
         if 'check_email' in request.GET:
-            from .models import CustomUser
             email = request.GET.get('check_email')
             exists = CustomUser.objects.filter(email=email).exists()
             return JsonResponse({'exists': exists})
@@ -38,12 +40,17 @@ def register(request):
         if 'refresh_captcha' in request.GET:
             captcha_text = generate_captcha()
             request.session['captcha_answer'] = captcha_text
+            request.session.modified = True
             return JsonResponse({'captcha_text': captcha_text})
 
         # Обычный GET - показать форму
         captcha_text = generate_captcha()
         request.session['captcha_answer'] = captcha_text
-        return render(request, 'realty/register.html', {'captcha_text': captcha_text})
+        request.session.modified = True
+
+        return render(request, 'realty/register.html', {
+            'captcha_text': captcha_text
+        })
 
     # POST запрос - обработка регистрации
     if request.method == 'POST':
@@ -51,10 +58,10 @@ def register(request):
         try:
             data = json.loads(request.body.decode('utf-8'))
         except:
-            data = request.POST
+            data = request.POST.dict()
 
         # Проверяем капчу
-        user_captcha = data.get('captcha', '').upper()
+        user_captcha = data.get('captcha', '').strip().upper()
         correct_captcha = request.session.get('captcha_answer', '').upper()
 
         if user_captcha != correct_captcha:
@@ -76,6 +83,7 @@ def register(request):
             # Очищаем капчу
             if 'captcha_answer' in request.session:
                 del request.session['captcha_answer']
+                request.session.modified = True
 
             return JsonResponse({'success': True})
         else:
@@ -86,6 +94,7 @@ def register(request):
             return JsonResponse({'success': False, 'errors': errors})
 
     return JsonResponse({'success': False, 'errors': {'__all__': [{'message': 'Неизвестная ошибка'}]}})
+# Остальные функции views (добавляем их обратно)
 def home(request):
     properties = Property.objects.filter(status='active')[:6]
     return render(request, 'realty/home.html', {
@@ -94,7 +103,6 @@ def home(request):
 
 
 def property_list(request):
-    """Список объектов недвижимости с фильтрацией"""
     properties = Property.objects.filter(status='active')
 
     # Фильтрация
@@ -125,7 +133,7 @@ def property_list(request):
         properties = properties.order_by(sort)
 
     # Пагинация
-    paginator = Paginator(properties, 12)  # 12 объектов на страницу
+    paginator = Paginator(properties, 12)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
@@ -158,6 +166,8 @@ def property_list(request):
         'property_types': Property.PROPERTY_TYPES,
     }
     return render(request, 'realty/property_list.html', context)
+
+
 def property_detail(request, pk):
     property_obj = get_object_or_404(Property, pk=pk)
     property_obj.views += 1
@@ -185,6 +195,7 @@ def property_detail(request, pk):
 
 @login_required
 def property_create(request):
+    """Создание нового объекта недвижимости"""
     if request.method == 'POST':
         form = PropertyForm(request.POST)
         if form.is_valid():
@@ -194,19 +205,32 @@ def property_create(request):
 
             # Обработка изображений
             images = request.FILES.getlist('images')
+            print(f"🔍 DEBUG: Получено файлов: {len(images)}")  # Для отладки
+
             for i, image in enumerate(images):
+                print(f"🔍 DEBUG: Обработка файла: {image.name}")  # Для отладки
                 PropertyImage.objects.create(
                     property=property_obj,
                     image=image,
                     is_main=(i == 0)  # Первое изображение - основное
                 )
 
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'redirect_url': f'/property/{property_obj.pk}/'
+                })
             return redirect('property_detail', pk=property_obj.pk)
-    else:
-        form = PropertyForm()
+        else:
+            print(f"🔍 DEBUG: Ошибки формы: {form.errors}")  # Для отладки
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [{'message': error} for error in error_list]
+                return JsonResponse({'success': False, 'errors': errors})
 
+    form = PropertyForm()
     return render(request, 'realty/property_form.html', {'form': form})
-
 
 @login_required
 def property_edit(request, pk):
@@ -229,24 +253,8 @@ def property_edit(request, pk):
     return render(request, 'realty/property_form.html', {'form': form, 'edit': True})
 
 
-@csrf_exempt
-def register(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        form = CustomUserCreationForm(data)
-
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'errors': form.errors})
-
-    return render(request, 'realty/register.html')
-
-
 @login_required
-def profile(request):
+def profile_update(request):
     if request.method == 'POST':
         form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
@@ -254,6 +262,9 @@ def profile(request):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({'success': True})
             return redirect('profile')
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': form.errors})
     else:
         form = ProfileUpdateForm(instance=request.user)
 
@@ -313,47 +324,15 @@ def blacklist_add(request, user_id):
 def about(request):
     return render(request, 'realty/about.html')
 
+from django.contrib.auth import logout
+from django.http import JsonResponse
 
-@login_required
-def profile_update(request):
-    """Обновление профиля пользователя"""
+def custom_logout(request):
+    """Кастомный выход из системы с поддержкой AJAX"""
     if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user)
-        if form.is_valid():
-            form.save()
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': True})
-            return redirect('profile')
-        else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
-    else:
-        form = ProfileUpdateForm(instance=request.user)
-
-    user_properties = Property.objects.filter(created_by=request.user)
-    return render(request, 'realty/profile.html', {
-        'form': form,
-        'properties': user_properties
-    })
-
-
-@login_required
-def property_edit(request, pk):
-    """Редактирование объекта недвижимости"""
-    property_obj = get_object_or_404(Property, pk=pk, created_by=request.user)
-
-    if request.method == 'POST':
-        form = PropertyForm(request.POST, instance=property_obj)
-        if form.is_valid():
-            form.save()
-
-            # Обновление изображений
-            new_images = request.FILES.getlist('images')
-            for image in new_images:
-                PropertyImage.objects.create(property=property_obj, image=image)
-
-            return redirect('property_detail', pk=pk)
-    else:
-        form = PropertyForm(instance=property_obj)
-
-    return render(request, 'realty/property_form.html', {'form': form, 'edit': True, 'object': property_obj})
+        logout(request)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True})
+        return redirect('home')
+    # Для GET запросов перенаправляем на домашнюю страницу
+    return redirect('home')

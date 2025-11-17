@@ -91,12 +91,17 @@
             <label for="id_captcha">Введите код с картинки *</label>
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <div id="captcha-text" style="font-family: monospace; font-size: 1.5rem; font-weight: bold;
-                    background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px; letter-spacing: 2px;">
+                    background: #f0f0f0; padding: 0.5rem 1rem; border-radius: 4px; letter-spacing: 2px;
+                    border: 2px solid #ccc; min-width: 120px; text-align: center; cursor: pointer;"
+                    title="Кликните для обновления кода">
                     {{ captcha_text }}
                 </div>
                 <input type="text" name="captcha" id="id_captcha" class="form-control" style="flex: 1;" required>
             </div>
             <small class="error" id="captcha-error" style="color: red; display: block;"></small>
+            <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
+                Кликните на код, чтобы обновить
+            </div>
         </div>
 
         <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">Зарегистрироваться</button>
@@ -111,6 +116,9 @@
 
 <script>
 $(document).ready(function() {
+    console.log('🔍 Отладка: Страница загружена');
+    console.log('CAPTCHA элемент:', $('#captcha-text').text());
+
     // Функция для очистки ошибок
     function clearErrors() {
         $('.error').text('');
@@ -119,10 +127,13 @@ $(document).ready(function() {
 
     // Функция для отображения ошибок
     function showErrors(errors) {
+        console.log('Ошибки формы:', errors);
         for (var field in errors) {
             var errorField = $('#' + field + '-error');
             if (errorField.length) {
                 errorField.text(errors[field][0].message);
+            } else {
+                console.log('Не найден элемент для ошибки:', field);
             }
         }
     }
@@ -130,6 +141,7 @@ $(document).ready(function() {
     // Обработка отправки формы
     $('#register-form').on('submit', function(e) {
         e.preventDefault();
+        console.log('📤 Отправка формы');
 
         clearErrors();
 
@@ -138,11 +150,16 @@ $(document).ready(function() {
         var originalText = submitBtn.text();
         submitBtn.text('Регистрация...').prop('disabled', true);
 
+        // Собираем данные формы
+        var formData = $(this).serialize();
+        console.log('Данные формы:', formData);
+
         $.ajax({
             type: 'POST',
             url: '{% url "register" %}',
-            data: $(this).serialize(),
+            data: formData,
             success: function(response) {
+                console.log('✅ Ответ сервера:', response);
                 if (response.success) {
                     $('#register-message')
                         .text('Регистрация успешна! Перенаправление на главную страницу...')
@@ -161,6 +178,9 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
+                console.log('❌ Ошибка AJAX:', error);
+                console.log('Статус:', status);
+                console.log('Ответ сервера:', xhr.responseText);
                 $('#register-message')
                     .text('Произошла ошибка при регистрации. Пожалуйста, попробуйте еще раз.')
                     .addClass('alert-danger')
@@ -176,6 +196,7 @@ $(document).ready(function() {
     $('#id_username').on('blur', function() {
         var username = $(this).val();
         if (username.length > 0) {
+            console.log('Проверка логина:', username);
             $.ajax({
                 type: 'GET',
                 url: '{% url "register" %}',
@@ -183,9 +204,13 @@ $(document).ready(function() {
                     'check_username': username
                 },
                 success: function(response) {
+                    console.log('Ответ проверки логина:', response);
                     if (response.exists) {
                         $('#username-error').text('Этот логин уже занят');
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.log('Ошибка проверки логина:', error);
                 }
             });
         }
@@ -194,6 +219,7 @@ $(document).ready(function() {
     $('#id_email').on('blur', function() {
         var email = $(this).val();
         if (email.length > 0) {
+            console.log('Проверка email:', email);
             $.ajax({
                 type: 'GET',
                 url: '{% url "register" %}',
@@ -201,9 +227,13 @@ $(document).ready(function() {
                     'check_email': email
                 },
                 success: function(response) {
+                    console.log('Ответ проверки email:', response);
                     if (response.exists) {
                         $('#email-error').text('Этот email уже используется');
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.log('Ошибка проверки email:', error);
                 }
             });
         }
@@ -211,6 +241,7 @@ $(document).ready(function() {
 
     // Обновление CAPTCHA
     function refreshCaptcha() {
+        console.log('🔄 Обновление CAPTCHA');
         $.ajax({
             type: 'GET',
             url: '{% url "register" %}',
@@ -218,16 +249,24 @@ $(document).ready(function() {
                 'refresh_captcha': true
             },
             success: function(response) {
+                console.log('Новая CAPTCHA:', response);
                 if (response.captcha_text) {
                     $('#captcha-text').text(response.captcha_text);
                     $('#id_captcha').val('');
+                } else {
+                    console.log('❌ Нет captcha_text в ответе');
                 }
+            },
+            error: function(xhr, status, error) {
+                console.log('❌ Ошибка обновления CAPTCHA:', error);
+                console.log('Статус:', status);
+                console.log('Ответ:', xhr.responseText);
             }
         });
     }
 
-    // Кнопка обновления CAPTCHA (можно добавить иконку обновления)
-    $('#captcha-text').css('cursor', 'pointer').on('click', function() {
+    // Клик по CAPTCHA для обновления
+    $('#captcha-text').on('click', function() {
         refreshCaptcha();
     });
 
@@ -242,14 +281,18 @@ $(document).ready(function() {
 <style>
 .alert-success {
     background-color: #d4edda;
-    border-color: #c3e6cb;
+    border: 1px solid #c3e6cb;
     color: #155724;
+    padding: 12px;
+    border-radius: 4px;
 }
 
 .alert-danger {
     background-color: #f8d7da;
-    border-color: #f5c6cb;
+    border: 1px solid #f5c6cb;
     color: #721c24;
+    padding: 12px;
+    border-radius: 4px;
 }
 
 .form-group {
@@ -259,6 +302,7 @@ $(document).ready(function() {
 .form-group label {
     font-weight: 600;
     margin-bottom: 0.5rem;
+    display: block;
 }
 
 .form-control {
@@ -266,11 +310,14 @@ $(document).ready(function() {
     border-radius: 4px;
     padding: 0.75rem;
     font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .form-control:focus {
     border-color: #3498db;
     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    outline: none;
 }
 
 .btn {
@@ -290,6 +337,13 @@ $(document).ready(function() {
 .btn:disabled {
     background: #bdc3c7;
     cursor: not-allowed;
+}
+
+.error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
 }
 </style>
 {% endblock %}

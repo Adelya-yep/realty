@@ -1,98 +1,371 @@
 {% extends 'realty/base.html' %}
 
 {% block content %}
-<h1>Профиль пользователя</h1>
+<div style="max-width: 800px; margin: 0 auto;">
+    <h1 class="text-center mb-4">Профиль пользователя</h1>
 
-<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
-    <div>
-        <div style="text-align: center;">
-            {% if user.avatar %}
-            <img src="{{ user.avatar.url }}" alt="Аватар" style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover;">
-            {% else %}
-            <div style="width: 150px; height: 150px; background: #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                Нет аватара
+    <div class="card">
+        <div class="card-body">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: start;">
+                <!-- Аватар -->
+                <div style="text-align: center;">
+                    <div style="position: relative; display: inline-block;">
+                        <label for="id_avatar" style="cursor: pointer;">
+                            {% if user.avatar %}
+                            <img src="{{ user.avatar.url }}" alt="Аватар"
+                                 style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 3px solid #3498db;">
+                            {% else %}
+                            <div style="width: 150px; height: 150px; background: #f8f9fa; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px dashed #dee2e6; cursor: pointer;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; color: #6c757d;">👤</div>
+                                    <div style="font-size: 0.8rem; color: #6c757d; margin-top: 0.5rem;">Нажмите для загрузки</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </label>
+                        <input type="file" name="avatar" id="id_avatar" accept="image/*" style="display: none;" onchange="previewAvatar(this)">
+                    </div>
+                    <h3 class="mt-3">{{ user.get_full_name|default:user.username }}</h3>
+                    <p class="text-muted">{{ user.get_user_type_display }}</p>
+                </div>
+
+                <!-- Форма -->
+                <div>
+                    <form id="profile-form" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label for="id_first_name">Имя *</label>
+                                {{ form.first_name }}
+                                <small class="error" id="first_name-error" style="color: red; display: block;"></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="id_last_name">Фамилия *</label>
+                                {{ form.last_name }}
+                                <small class="error" id="last_name-error" style="color: red; display: block;"></small>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_email">Email *</label>
+                            {{ form.email }}
+                            <small class="error" id="email-error" style="color: red; display: block;"></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_phone">Телефон</label>
+                            {{ form.phone }}
+                            <small class="error" id="phone-error" style="color: red; display: block;"></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_gender">Пол</label>
+                            {{ form.gender }}
+                            <small class="error" id="gender-error" style="color: red; display: block;"></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_bio">О себе</label>
+                            {{ form.bio }}
+                            <small class="error" id="bio-error" style="color: red; display: block;"></small>
+                        </div>
+
+                        <button type="submit" class="btn" style="width: 100%;">Сохранить изменения</button>
+                    </form>
+
+                    <div id="profile-message" style="margin-top: 1rem; padding: 1rem; border-radius: 4px; display: none;"></div>
+                </div>
             </div>
-            {% endif %}
-            <h3>{{ user.get_full_name|default:user.username }}</h3>
-            <p>{{ user.get_user_type_display }}</p>
         </div>
     </div>
 
-    <div>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div class="form-group">
-                    <label for="id_first_name">Имя:</label>
-                    {{ form.first_name }}
+    <!-- Объекты пользователя -->
+    <div style="margin-top: 3rem;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Мои объекты недвижимости</h2>
+            <a href="{% url 'property_create' %}" class="btn">Добавить новый объект</a>
+        </div>
+
+        {% if properties %}
+        <div class="property-grid">
+            {% for property in properties %}
+            <div class="property-card">
+                {% with main_image=property.images.filter.is_main.first %}
+                    {% if main_image %}
+                    <img src="{{ main_image.image.url }}" alt="{{ property.title }}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px 8px 0 0;">
+                    {% else %}
+                    <div class="no-image" style="height: 200px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px 8px 0 0;">
+                        Нет изображения
+                    </div>
+                    {% endif %}
+                {% endwith %}
+                <div style="padding: 1rem;">
+                    <h4 style="margin: 0 0 0.5rem 0;">
+                        <a href="{% url 'property_detail' property.pk %}" style="color: #2c3e50; text-decoration: none;">{{ property.title }}</a>
+                    </h4>
+                    <p style="margin: 0.25rem 0; color: #e74c3c; font-weight: bold;">{{ property.price }} руб.</p>
+                    <p style="margin: 0.25rem 0; font-size: 0.9rem;">
+                        <span style="background: {% if property.status == 'active' %}#28a745{% elif property.status == 'sold' %}#dc3545{% else %}#6c757d{% endif %}; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">
+                            {{ property.get_status_display }}
+                        </span>
+                    </p>
+                    <p style="margin: 0.25rem 0; font-size: 0.9rem; color: #666;">Просмотров: {{ property.views }}</p>
+                    <div style="margin-top: 1rem;">
+                        <a href="{% url 'property_edit' property.pk %}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Редактировать</a>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="id_last_name">Фамилия:</label>
-                    {{ form.last_name }}
-                </div>
             </div>
-
-            <div class="form-group">
-                <label for="id_email">Email:</label>
-                {{ form.email }}
-            </div>
-
-            <div class="form-group">
-                <label for="id_phone">Телефон:</label>
-                {{ form.phone }}
-            </div>
-
-            <div class="form-group">
-                <label for="id_gender">Пол:</label>
-                {{ form.gender }}
-            </div>
-
-            <div class="form-group">
-                <label for="id_bio">О себе:</label>
-                {{ form.bio }}
-            </div>
-
-            <div class="form-group">
-                <label for="id_avatar">Аватар:</label>
-                {{ form.avatar }}
-            </div>
-
-            <button type="submit" class="btn">Сохранить изменения</button>
-        </form>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5" style="background: #f8f9fa; border-radius: 8px;">
+            <h4 style="color: #6c757d;">У вас пока нет объектов недвижимости</h4>
+            <p class="text-muted">Добавьте первый объект, чтобы начать продавать</p>
+            <a href="{% url 'property_create' %}" class="btn">Добавить объект</a>
+        </div>
+        {% endif %}
     </div>
 </div>
 
-<!-- Объекты пользователя -->
-<div style="margin-top: 3rem;">
-    <h2>Мои объекты недвижимости</h2>
-    
-    <a href="{% url 'property_create' %}" class="btn">Добавить новый объект</a>
-    
-    <div class="property-grid" style="margin-top: 1rem;">
-        {% for property in properties %}
-        <div class="property-card">
-            {% with main_image=property.images.filter.is_main.first %}
-                {% if main_image %}
-                <img src="{{ main_image.image.url }}" alt="{{ property.title }}">
-                {% else %}
-                <div class="no-image">Нет изображения</div>
-                {% endif %}
-            {% endwith %}
-            <h3><a href="{% url 'property_detail' property.pk %}">{{ property.title }}</a></h3>
-            <p><strong>Цена:</strong> {{ property.price }} руб.</p>
-            <p><strong>Статус:</strong> {{ property.get_status_display }}</p>
-            <p><strong>Просмотров:</strong> {{ property.views }}</p>
-            <div style="margin-top: 1rem;">
-                <a href="{% url 'property_edit' property.pk %}" class="btn">Редактировать</a>
-            </div>
-        </div>
-        {% empty %}
-        <div style="grid-column: 1 / -1; text-align: center; padding: 2rem;">
-            <p>У вас пока нет объектов недвижимости.</p>
-        </div>
-        {% endfor %}
-    </div>
-</div>
+<script>
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Создаем новый элемент изображения
+            const newAvatar = document.createElement('img');
+            newAvatar.src = e.target.result;
+            newAvatar.alt = 'Аватар';
+            newAvatar.style.width = '150px';
+            newAvatar.style.height = '150px';
+            newAvatar.style.borderRadius = '50%';
+            newAvatar.style.objectFit = 'cover';
+            newAvatar.style.border = '3px solid #3498db';
+
+            // Заменяем содержимое label
+            const label = input.parentElement;
+            label.innerHTML = '';
+            label.appendChild(newAvatar);
+
+            // Автоматически сохраняем форму
+            setTimeout(() => {
+                document.getElementById('profile-form').dispatchEvent(new Event('submit'));
+            }, 500);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+$(document).ready(function() {
+    // Обработка отправки формы через AJAX
+    $('#profile-form').on('submit', function(e) {
+        e.preventDefault();
+
+        // Очищаем ошибки
+        $('.error').text('');
+        $('#profile-message').hide().removeClass('alert-success alert-danger');
+
+        // Показываем загрузку
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.text();
+        submitBtn.text('Сохранение...').prop('disabled', true);
+
+        // Создаем FormData для отправки файлов
+        const formData = new FormData(this);
+
+        $.ajax({
+            type: 'POST',
+            url: window.location.href,
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    $('#profile-message')
+                        .text('Изменения успешно сохранены!')
+                        .addClass('alert-success')
+                        .show();
+
+                    // Обновляем имя в заголовке
+                    const firstName = $('input[name="first_name"]').val();
+                    const lastName = $('input[name="last_name"]').val();
+                    if (firstName || lastName) {
+                        $('h3').text(firstName + ' ' + lastName);
+                    }
+                } else {
+                    // Показываем ошибки
+                    for (let field in response.errors) {
+                        $(`#${field}-error`).text(response.errors[field][0].message);
+                    }
+                    $('#profile-message')
+                        .text('Пожалуйста, исправьте ошибки в форме')
+                        .addClass('alert-danger')
+                        .show();
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#profile-message')
+                    .text('Произошла ошибка при сохранении. Пожалуйста, попробуйте еще раз.')
+                    .addClass('alert-danger')
+                    .show();
+            },
+            complete: function() {
+                submitBtn.text(originalText).prop('disabled', false);
+            }
+        });
+    });
+
+    // Очистка ошибок при вводе
+    $('input, select, textarea').on('input', function() {
+        const fieldName = $(this).attr('name');
+        $(`#${fieldName}-error`).text('');
+    });
+
+    // Показываем имя файла при выборе аватара
+    $('#id_avatar').on('change', function() {
+        const fileName = this.files[0]?.name;
+        if (fileName) {
+            console.log('Выбран файл:', fileName);
+        }
+    });
+});
+</script>
+
+<style>
+.property-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin: 1rem 0;
+}
+
+.property-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.property-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+    color: #2c3e50;
+}
+
+.form-control {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.75rem;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    outline: none;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn:hover {
+    background: #2980b9;
+    color: white;
+    text-decoration: none;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.py-5 {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+</style>
 {% endblock %}

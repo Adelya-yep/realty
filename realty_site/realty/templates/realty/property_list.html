@@ -60,17 +60,19 @@
 <div id="properties-container">
     <div class="row">
         {% for property in page_obj %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
-                {% with main_image=property.images.filter.is_main.first %}
-                    {% if main_image %}
-                    <img src="{{ main_image.image.url }}" class="card-img-top" alt="{{ property.title }}" style="height: 200px; object-fit: cover;">
-                    {% else %}
-                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                        <span class="text-muted">Нет изображения</span>
-                    </div>
-                    {% endif %}
-                {% endwith %}
+        <!-- В цикле объектов -->
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="card h-100">
+        {% with main_image=property.images.first %}
+            {% if main_image %}
+            <img src="{{ main_image.image.url }}" class="card-img-top" alt="{{ property.title }}"
+                 style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                <span class="text-muted">Нет изображения</span>
+            </div>
+            {% endif %}
+        {% endwith %}
                 
                 <div class="card-body">
                     <h5 class="card-title">

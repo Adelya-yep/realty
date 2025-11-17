@@ -86,7 +86,6 @@ class PropertyImage(models.Model):
     def __str__(self):
         return f"Изображение для {self.property.title}"
 
-
 class Comment(models.Model):
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)

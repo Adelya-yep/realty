@@ -4,21 +4,26 @@
 <div class="row">
     <!-- Изображения -->
     <div class="col-md-6">
-        {% with main_image=property.images.filter.is_main.first %}
+        <!-- Основное изображение -->
+        {% with main_image=property.images.first %}
             {% if main_image %}
-            <img src="{{ main_image.image.url }}" class="img-fluid rounded" alt="{{ property.title }}">
+            <img src="{{ main_image.image.url }}" class="img-fluid rounded" alt="{{ property.title }}"
+                 style="width: 100%; height: 400px; object-fit: cover;">
             {% else %}
-            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 300px;">
+            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 400px;">
                 <span class="text-muted">Нет изображения</span>
             </div>
             {% endif %}
         {% endwith %}
 
+        <!-- Галерея изображений -->
         {% if property.images.count > 1 %}
         <div class="row mt-2">
             {% for image in property.images.all %}
-            <div class="col-3">
-                <img src="{{ image.image.url }}" class="img-thumbnail" alt="{{ property.title }}" style="cursor: pointer; height: 80px; object-fit: cover;" onclick="this.closest('.row').previousElementSibling.src='{{ image.image.url }}'">
+            <div class="col-3 mb-2">
+                <img src="{{ image.image.url }}" class="img-thumbnail" alt="{{ property.title }}"
+                     style="cursor: pointer; height: 80px; object-fit: cover; width: 100%;"
+                     onclick="document.querySelector('.col-md-6 img').src='{{ image.image.url }}'">
             </div>
             {% endfor %}
         </div>
