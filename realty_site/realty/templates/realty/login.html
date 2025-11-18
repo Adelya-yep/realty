@@ -1,18 +1,39 @@
 {% extends 'realty/base.html' %}
 
 {% block content %}
-<h1>Вход в систему</h1>
-<form method="post">
-    {% csrf_token %}
-    <div class="form-group">
-        <label for="id_username">Логин:</label>
-        <input type="text" name="username" id="id_username" class="form-control" required>
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center text-primary mb-4">Вход в систему</h2>
+
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    Неверное имя пользователя или пароль.
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Логин</label>
+                        <input type="text" name="username" class="form-control" required autofocus>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Пароль</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-3">Войти</button>
+
+                    <div class="text-center">
+                        <a href="{% url 'register' %}" class="text-primary">Создать аккаунт</a>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="form-group">
-        <label for="id_password">Пароль:</label>
-        <input type="password" name="password" id="id_password" class="form-control" required>
-    </div>
-    <button type="submit" class="btn">Войти</button>
-</form>
-<p>Нет аккаунта? <a href="{% url 'register' %}">Зарегистрируйтесь</a></p>
+</div>
 {% endblock %}

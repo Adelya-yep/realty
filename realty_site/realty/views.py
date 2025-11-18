@@ -4,7 +4,7 @@ import string
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.contrib import messages
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
@@ -96,9 +96,21 @@ def register(request):
     return JsonResponse({'success': False, 'errors': {'__all__': [{'message': 'Неизвестная ошибка'}]}})
 # Остальные функции views (добавляем их обратно)
 def home(request):
+    """Главная страница с статистикой"""
     properties = Property.objects.filter(status='active')[:6]
+
+    # Статистика для главной страницы
+    properties_count = Property.objects.filter(status='active').count()
+    users_count = CustomUser.objects.count()
+    realtors_count = CustomUser.objects.filter(user_type='realtor').count()
+    sold_count = Property.objects.filter(status='sold').count()
+
     return render(request, 'realty/home.html', {
-        'properties': properties
+        'properties': properties,
+        'properties_count': properties_count,
+        'users_count': users_count,
+        'realtors_count': realtors_count,
+        'sold_count': sold_count,
     })
 
 
@@ -232,27 +244,30 @@ def property_create(request):
     form = PropertyForm()
     return render(request, 'realty/property_form.html', {'form': form})
 
+
 @login_required
 def property_edit(request, pk):
     property_obj = get_object_or_404(Property, pk=pk, created_by=request.user)
 
     if request.method == 'POST':
-        form = PropertyForm(request.POST, instance=property_obj)
+        form = PropertyForm(request.POST, request.FILES, instance=property_obj)  # Добавьте request.FILES
         if form.is_valid():
-            form.save()
+            property_obj = form.save()
 
-            # Обновление изображений
+            # Обработка новых изображений
             new_images = request.FILES.getlist('images')
             for image in new_images:
                 PropertyImage.objects.create(property=property_obj, image=image)
 
-            return redirect('property_detail', pk=pk)
+            return redirect('property_detail', pk=property_obj.pk)
     else:
         form = PropertyForm(instance=property_obj)
 
-    return render(request, 'realty/property_form.html', {'form': form, 'edit': True})
-
-
+    return render(request, 'realty/property_form.html', {
+        'form': form,
+        'edit': True,
+        'property': property_obj
+    })
 @login_required
 def profile_update(request):
     if request.method == 'POST':
@@ -277,38 +292,80 @@ def profile_update(request):
 
 @login_required
 def message_list(request):
-    messages = Message.objects.filter(
-        Q(sender=request.user) | Q(receiver=request.user)
-    ).order_by('-created_at')
-    return render(request, 'realty/messages.html', {'messages': messages})
+    """Список диалогов пользователя"""
+    dialogues = Dialogue.objects.filter(
+        Q(participant1=request.user) | Q(participant2=request.user)
+    ).select_related('participant1', 'participant2').prefetch_related('messages').order_by('-updated_at')
+
+    # Добавляем информацию о последнем сообщении и количестве непрочитанных
+    dialogues_data = []
+    for dialogue in dialogues:
+        other_user = dialogue.get_other_participant(request.user)
+        last_message = dialogue.messages.last()
+        unread_count = dialogue.messages.filter(receiver=request.user, is_read=False).count()
+
+        dialogues_data.append({
+            'dialogue': dialogue,
+            'other_user': other_user,
+            'last_message': last_message,
+            'unread_count': unread_count
+        })
+
+    return render(request, 'realty/messages.html', {'dialogues_data': dialogues_data})
 
 
 @login_required
-def message_send(request):
+def dialogue_detail(request, user_id):
+    """Просмотр диалога с конкретным пользователем"""
+    other_user = get_object_or_404(CustomUser, id=user_id)
+
+    # Находим или создаем диалог
+    dialogue, created = Dialogue.objects.get_or_create(
+        participant1=min(request.user, other_user, key=lambda u: u.id),
+        participant2=max(request.user, other_user, key=lambda u: u.id)
+    )
+
+    # Помечаем сообщения как прочитанные
+    dialogue.messages.filter(receiver=request.user, is_read=False).update(is_read=True)
+
     if request.method == 'POST':
-        form = MessageForm(request.POST, sender=request.user)
-        if form.is_valid():
-            message = form.save(commit=False)
-            message.sender = request.user
-            message.save()
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'errors': form.errors})
+        content = request.POST.get('content', '').strip()
+        if content:
+            Message.objects.create(
+                dialogue=dialogue,
+                sender=request.user,
+                receiver=other_user,
+                content=content
+            )
+            dialogue.save()  # Обновляем updated_at
+            return redirect('dialogue_detail', user_id=user_id)
 
-    form = MessageForm(sender=request.user)
-    return render(request, 'realty/message_send.html', {'form': form})
+    messages_list = dialogue.messages.select_related('sender', 'receiver').all()
+
+    return render(request, 'realty/dialogue_detail.html', {
+        'dialogue': dialogue,
+        'other_user': other_user,
+        'messages': messages_list
+    })
 
 
 @login_required
-def message_detail(request, pk):
-    message = get_object_or_404(Message, pk=pk)
+def message_send(request, user_id=None):
+    """Начать новый диалог или отправить сообщение"""
+    if user_id:
+        return dialogue_detail(request, user_id)
 
-    if message.receiver == request.user and not message.is_read:
-        message.is_read = True
-        message.save()
+    if request.method == 'POST':
+        receiver_id = request.POST.get('receiver')
+        content = request.POST.get('content', '').strip()
 
-    return render(request, 'realty/message_detail.html', {'message': message})
+        if receiver_id and content:
+            receiver = get_object_or_404(CustomUser, id=receiver_id)
+            return dialogue_detail(request, receiver.id)
 
+    # Показываем форму для выбора получателя
+    users = CustomUser.objects.exclude(id=request.user.id)
+    return render(request, 'realty/message_send.html', {'users': users})
 
 @login_required
 def blacklist_add(request, user_id):

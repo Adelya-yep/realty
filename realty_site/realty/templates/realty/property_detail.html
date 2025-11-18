@@ -73,7 +73,7 @@
 
         <div class="d-flex gap-2 mb-4">
             {% if user.is_authenticated and user != property.created_by %}
-            <a href="{% url 'message_send' %}?to={{ property.created_by.id }}&subject=Вопрос: {{ property.title }}" class="btn btn-primary">
+            <a href="{% url 'message_send_to' property.created_by.id %}" class="btn btn-primary">
                 Написать автору
             </a>
             {% endif %}

@@ -1,0 +1,54 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        Диалог с {{ other_user.get_full_name|default:other_user.username }}
+                    </h5>
+                    <a href="{% url 'message_list' %}" class="btn btn-outline-secondary btn-sm">← Назад</a>
+                </div>
+            </div>
+
+            <div class="card-body" style="height: 400px; overflow-y: auto;">
+                {% for message in messages %}
+                <div class="mb-3 {% if message.sender == user %}text-end{% endif %}">
+                    <div class="d-inline-block max-width-75">
+                        <div class="alert {% if message.sender == user %}alert-primary{% else %}alert-light{% endif %} mb-1">
+                            {{ message.content|linebreaksbr }}
+                        </div>
+                        <small class="text-muted">
+                            {{ message.created_at|date:"H:i" }}
+                            {% if message.sender == user and message.is_read %}
+                            <span class="ms-1">✓</span>
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-5">
+                    <p>Диалог пуст. Напишите первое сообщение!</p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card-footer bg-white">
+                <form method="post" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <input type="text" name="content" class="form-control" placeholder="Введите сообщение..." required>
+                    <button type="submit" class="btn btn-primary">Отправить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.max-width-75 {
+    max-width: 75%;
+}
+</style>
+{% endblock %}

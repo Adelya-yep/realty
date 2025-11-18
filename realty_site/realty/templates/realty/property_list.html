@@ -3,15 +3,15 @@
 {% block content %}
 <h1 class="mb-4">Объекты недвижимости</h1>
 
-<!-- Фильтры -->
-<div class="card mb-4">
+<!-- Фильтры как ФОРМА -->
+<form method="get" class="card mb-4">
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-3">
-                <input type="text" id="search" class="form-control" placeholder="Поиск..." value="{{ request.GET.search|default:'' }}">
+                <input type="text" name="search" class="form-control" placeholder="Поиск..." value="{{ request.GET.search }}">
             </div>
             <div class="col-md-2">
-                <select id="property-type" class="form-select">
+                <select name="type" class="form-select">
                     <option value="">Все типы</option>
                     {% for type in property_types %}
                     <option value="{{ type.0 }}" {% if request.GET.type == type.0 %}selected{% endif %}>{{ type.1 }}</option>
@@ -19,13 +19,13 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <input type="number" id="min-price" class="form-control" placeholder="Цена от" value="{{ request.GET.min_price|default:'' }}">
+                <input type="number" name="min_price" class="form-control" placeholder="Цена от" value="{{ request.GET.min_price }}">
             </div>
             <div class="col-md-2">
-                <input type="number" id="max-price" class="form-control" placeholder="Цена до" value="{{ request.GET.max_price|default:'' }}">
+                <input type="number" name="max_price" class="form-control" placeholder="Цена до" value="{{ request.GET.max_price }}">
             </div>
             <div class="col-md-2">
-                <select id="rooms" class="form-select">
+                <select name="rooms" class="form-select">
                     <option value="">Комнаты</option>
                     <option value="1" {% if request.GET.rooms == '1' %}selected{% endif %}>1</option>
                     <option value="2" {% if request.GET.rooms == '2' %}selected{% endif %}>2</option>
@@ -34,208 +34,106 @@
                 </select>
             </div>
             <div class="col-md-1">
-                <button onclick="applyFilters()" class="btn btn-primary w-100">ОК</button>
+                <button type="submit" class="btn btn-primary w-100">Применить</button>
             </div>
         </div>
     </div>
-</div>
+</form>
 
-<!-- Сортировка -->
-<div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Сортировка как ФОРМА -->
+<form method="get" class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <select id="sort" class="form-select" onchange="applySort()" style="width: auto;">
+        <select name="sort" class="form-select" onchange="this.form.submit()" style="width: auto;">
             <option value="-created_at" {% if request.GET.sort == '-created_at' %}selected{% endif %}>Новые</option>
             <option value="price" {% if request.GET.sort == 'price' %}selected{% endif %}>Цена ↑</option>
             <option value="-price" {% if request.GET.sort == '-price' %}selected{% endif %}>Цена ↓</option>
             <option value="-views" {% if request.GET.sort == '-views' %}selected{% endif %}>Популярные</option>
         </select>
-    </div>
-    
-    {% if user.is_authenticated %}
-    <a href="{% url 'property_create' %}" class="btn btn-success">Добавить объект</a>
-    {% endif %}
-</div>
-
-<!-- Объекты -->
-<div id="properties-container">
-    <div class="row">
-        {% for property in page_obj %}
-        <!-- В цикле объектов -->
-<div class="col-md-6 col-lg-4 mb-4">
-    <div class="card h-100">
-        {% with main_image=property.images.first %}
-            {% if main_image %}
-            <img src="{{ main_image.image.url }}" class="card-img-top" alt="{{ property.title }}"
-                 style="height: 200px; object-fit: cover;">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                <span class="text-muted">Нет изображения</span>
-            </div>
+        <!-- Сохраняем другие параметры фильтрации -->
+        {% for key, value in request.GET.items %}
+            {% if key != 'sort' and key != 'page' %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
             {% endif %}
-        {% endwith %}
-                
-                <div class="card-body">
-                    <h5 class="card-title">
-                        <a href="{% url 'property_detail' property.pk %}" class="text-decoration-none">{{ property.title }}</a>
-                    </h5>
-                    
-                    <div class="mb-2">
-                        <strong class="text-primary">{{ property.price }} руб.</strong>
-                    </div>
-                    
-                    <div class="text-muted small mb-2">
-                        <div>{{ property.get_property_type_display }}</div>
-                        <div>{{ property.area }} кв.м · {% if property.rooms %}{{ property.rooms }} комн.{% endif %}</div>
-                        <div>{{ property.location }}</div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between text-muted small">
-                        <span>Просмотров: {{ property.views }}</span>
-                        <span>{{ property.created_at|date:"d.m.Y" }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <div class="text-center py-5">
-                <h4>Объекты не найдены</h4>
-                <p class="text-muted">Попробуйте изменить параметры поиска</p>
-                {% if user.is_authenticated %}
-                <a href="{% url 'property_create' %}" class="btn btn-primary">Добавить первый объект</a>
-                {% endif %}
-            </div>
-        </div>
         {% endfor %}
     </div>
 
-    <!-- Пагинация -->
-    {% if page_obj.has_other_pages %}
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            {% if page_obj.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Назад</a>
-            </li>
-            {% endif %}
-            
-            <li class="page-item disabled">
-                <span class="page-link">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
-            </li>
-            
-            {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Вперед</a>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
+    {% if user.is_authenticated %}
+    <a href="{% url 'property_create' %}" class="btn btn-success">Добавить объект</a>
     {% endif %}
-</div>
+</form>
 
-<!-- Загрузка -->
-<div id="loading" class="text-center py-4" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Загрузка...</span>
-    </div>
-</div>
+<!-- Объекты (остается без изменений) -->
+<div class="row">
+    {% for property in page_obj %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            {% with main_image=property.images.first %}
+                {% if main_image %}
+                <img src="{{ main_image.image.url }}" class="card-img-top" alt="{{ property.title }}"
+                     style="height: 200px; object-fit: cover;">
+                {% else %}
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <span class="text-muted">Нет изображения</span>
+                </div>
+                {% endif %}
+            {% endwith %}
 
-<script>
-let currentPage = 1;
+            <div class="card-body">
+                <h5 class="card-title">
+                    <a href="{% url 'property_detail' property.pk %}" class="text-decoration-none">{{ property.title }}</a>
+                </h5>
 
-function applyFilters() {
-    currentPage = 1;
-    loadProperties();
-}
+                <div class="mb-2">
+                    <strong class="text-primary">{{ property.price }} руб.</strong>
+                </div>
 
-function applySort() {
-    currentPage = 1;
-    loadProperties();
-}
+                <div class="text-muted small mb-2">
+                    <div>{{ property.get_property_type_display }}</div>
+                    <div>{{ property.area }} кв.м · {% if property.rooms %}{{ property.rooms }} комн.{% endif %}</div>
+                    <div>{{ property.location }}</div>
+                </div>
 
-function loadProperties() {
-    $('#loading').show();
-    
-    const filters = {
-        search: $('#search').val(),
-        type: $('#property-type').val(),
-        min_price: $('#min-price').val(),
-        max_price: $('#max-price').val(),
-        rooms: $('#rooms').val(),
-        sort: $('#sort').val(),
-        page: currentPage,
-        'x-requested-with': 'XMLHttpRequest'
-    };
-    
-    $.ajax({
-        url: window.location.href,
-        data: filters,
-        success: function(response) {
-            renderProperties(response);
-        },
-        complete: function() {
-            $('#loading').hide();
-        }
-    });
-}
-
-function renderProperties(data) {
-    if (data.properties.length === 0) {
-        $('#properties-container').html(`
-            <div class="text-center py-5">
-                <h4>Объекты не найдены</h4>
-                <p class="text-muted">Попробуйте изменить параметры поиска</p>
-            </div>
-        `);
-        return;
-    }
-    
-    let html = '<div class="row">';
-    
-    data.properties.forEach(function(property) {
-        html += `
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card h-100">
-                    <img src="${property.image_url}" class="card-img-top" alt="${property.title}" style="height: 200px; object-fit: cover;">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <a href="/property/${property.id}/" class="text-decoration-none">${property.title}</a>
-                        </h5>
-                        <div class="mb-2">
-                            <strong class="text-primary">${property.price} руб.</strong>
-                        </div>
-                        <div class="text-muted small">
-                            <div>${property.property_type}</div>
-                            <div>${property.area} кв.м · ${property.rooms || ''} ${property.rooms ? 'комн.' : ''}</div>
-                            <div>${property.location}</div>
-                        </div>
-                        <div class="d-flex justify-content-between text-muted small mt-2">
-                            <span>Просмотров: ${property.views}</span>
-                        </div>
-                    </div>
+                <div class="d-flex justify-content-between text-muted small">
+                    <span>Просмотров: {{ property.views }}</span>
+                    <span>{{ property.created_at|date:"d.m.Y" }}</span>
                 </div>
             </div>
-        `;
-    });
-    
-    html += '</div>';
-    $('#properties-container').html(html);
-}
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <h4>Объекты не найдены</h4>
+            <p class="text-muted">Попробуйте изменить параметры поиска</p>
+            {% if user.is_authenticated %}
+            <a href="{% url 'property_create' %}" class="btn btn-primary">Добавить первый объект</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
 
-// Автопоиск
-$('#search').on('input', function() {
-    currentPage = 1;
-    loadProperties();
-});
+<!-- Пагинация (остается без изменений) -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Назад</a>
+        </li>
+        {% endif %}
 
-$('#property-type, #rooms, #sort').on('change', function() {
-    currentPage = 1;
-    loadProperties();
-});
+        <li class="page-item disabled">
+            <span class="page-link">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+        </li>
 
-$('#min-price, #max-price').on('input', function() {
-    currentPage = 1;
-    loadProperties();
-});
-</script>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Вперед</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
 {% endblock %}

@@ -1,42 +1,49 @@
 {% extends 'realty/base.html' %}
 
 {% block content %}
-<h1>Личные сообщения</h1>
-
-<div style="margin-bottom: 1rem;">
-    <a href="{% url 'message_send' %}" class="btn">Написать сообщение</a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Мои диалоги</h1>
+    <a href="{% url 'message_send' %}" class="btn btn-primary">Новый диалог</a>
 </div>
 
-<div style="border: 1px solid #ddd; border-radius: 8px;">
-    {% for message in messages %}
-    <div style="padding: 1rem; border-bottom: 1px solid #eee; {% if not message.is_read and message.receiver == user %}background: #f0f8ff;{% endif %}">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>
-                    {% if message.sender == user %}
-                    → {{ message.receiver.get_full_name|default:message.receiver.username }}
-                    {% else %}
-                    ← {{ message.sender.get_full_name|default:message.sender.username }}
-                    {% endif %}
-                </strong>
-                <span style="margin-left: 1rem; font-weight: normal;">{{ message.subject }}</span>
-                {% if not message.is_read and message.receiver == user %}
-                <span style="background: #3498db; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; margin-left: 0.5rem;">Новое</span>
-                {% endif %}
-            </div>
-            <div style="text-align: right;">
-                <small>{{ message.created_at|date:"d.m.Y H:i" }}</small>
-                <div style="margin-top: 0.5rem;">
-                    <a href="{% url 'message_detail' message.pk %}" class="btn">Просмотреть</a>
+{% if dialogues_data %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+            {% for data in dialogues_data %}
+            <a href="{% url 'dialogue_detail' data.other_user.id %}"
+               class="list-group-item list-group-item-action {% if data.unread_count > 0 %}bg-light{% endif %}">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">
+                            {{ data.other_user.get_full_name|default:data.other_user.username }}
+                            {% if data.unread_count > 0 %}
+                            <span class="badge bg-primary">{{ data.unread_count }}</span>
+                            {% endif %}
+                        </h6>
+                        {% if data.last_message %}
+                        <p class="mb-1 text-muted">
+                            {% if data.last_message.sender == user %}Вы: {% endif %}
+                            {{ data.last_message.content|truncatewords:10 }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="text-end">
+                        {% if data.last_message %}
+                        <small class="text-muted">{{ data.last_message.created_at|date:"d.m.Y H:i" }}</small>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
+            </a>
+            {% endfor %}
         </div>
-        <p style="margin: 0.5rem 0 0 0; color: #666;">{{ message.content|truncatewords:20 }}</p>
     </div>
-    {% empty %}
-    <div style="padding: 2rem; text-align: center;">
-        <p>У вас пока нет сообщений.</p>
-    </div>
-    {% endfor %}
 </div>
+{% else %}
+<div class="text-center py-5">
+    <h4>Диалогов пока нет</h4>
+    <p class="text-muted">Начните новый диалог!</p>
+    <a href="{% url 'message_send' %}" class="btn btn-primary">Начать диалог</a>
+</div>
+{% endif %}
 {% endblock %}

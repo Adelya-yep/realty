@@ -1,23 +1,126 @@
 {% extends 'realty/base.html' %}
 
 {% block content %}
-<h1>Добро пожаловать в Realty Site</h1>
-<p>Лучшие предложения недвижимости в одном месте</p>
-
-<h2>Последние объекты</h2>
-<div class="property-grid">
-    {% for property in properties %}
-    <div class="property-card">
-        {% with main_image=property.images.filter.is_main.first %}
-            {% if main_image %}
-            <img src="{{ main_image.image.url }}" alt="{{ property.title }}">
-            {% endif %}
-        {% endwith %}
-        <h3><a href="{% url 'property_detail' property.pk %}">{{ property.title }}</a></h3>
-        <p>Цена: {{ property.price }} руб.</p>
-        <p>Тип: {{ property.get_property_type_display }}</p>
-        <p>Площадь: {{ property.area }} кв.м</p>
+<!-- Hero секция -->
+<div class="hero-section bg-primary text-white py-5 mb-5 rounded-3">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-5 fw-bold mb-4">Найдите дом своей мечты</h1>
+                <p class="lead mb-4">Тысячи проверенных предложений недвижимости по всей России. Квартиры, дома, участки — все для вашего комфорта.</p>
+                <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <a href="{% url 'property_list' %}" class="btn btn-light btn-lg px-4">Найти недвижимость</a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'property_create' %}" class="btn btn-outline-light btn-lg px-4">Продать недвижимость</a>
+                    {% else %}
+                    <a href="{% url 'register' %}" class="btn btn-outline-light btn-lg px-4">Начать продавать</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-    {% endfor %}
 </div>
+
+<!-- Статистика -->
+<div class="row text-center mb-5">
+    <div class="col-md-3 mb-3">
+        <div class="card py-3">
+            <h3 class="text-primary mb-0">{{ properties_count|default:"0" }}</h3>
+            <p class="text-muted mb-0">Объектов в каталоге</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card py-3">
+            <h3 class="text-primary mb-0">{{ users_count|default:"0" }}</h3>
+            <p class="text-muted mb-0">Пользователей</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card py-3">
+            <h3 class="text-primary mb-0">{{ realtors_count|default:"0" }}</h3>
+            <p class="text-muted mb-0">Профессиональных риэлторов</p>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card py-3">
+            <h3 class="text-primary mb-0">{{ sold_count|default:"0" }}</h3>
+            <p class="text-muted mb-0">Успешных сделок</p>
+        </div>
+    </div>
+</div>
+
+<!-- Последние объекты -->
+<div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark">Новые предложения</h2>
+        <a href="{% url 'property_list' %}" class="btn btn-outline-primary">Весь каталог</a>
+    </div>
+
+    {% if properties %}
+    <div class="row">
+        {% for property in properties %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                {% with main_image=property.images.first %}
+                    {% if main_image %}
+                    <img src="{{ main_image.image.url }}" class="card-img-top" alt="{{ property.title }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <span class="text-muted">Нет изображения</span>
+                    </div>
+                    {% endif %}
+                {% endwith %}
+
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title text-dark">{{ property.title }}</h5>
+                    <p class="card-text text-primary fw-bold mb-2">{{ property.price }} руб.</p>
+                    <div class="text-muted small mb-3">
+                        <div>{{ property.get_property_type_display }}</div>
+                        <div>{{ property.area }} кв.м · {{ property.rooms }} комн.</div>
+                        <div class="text-truncate">{{ property.location }}</div>
+                    </div>
+                    <a href="{% url 'property_detail' property.pk %}" class="btn btn-primary mt-auto">Подробнее</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <p class="text-muted">Пока нет объектов недвижимости</p>
+        {% if user.is_authenticated %}
+        <a href="{% url 'property_create' %}" class="btn btn-primary">Добавить объект</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Преимущества -->
+<div class="bg-white py-5 border-top">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-lg-4 mb-4">
+                <div class="text-primary mb-3" style="font-size: 2.5rem;">✓</div>
+                <h5>Проверенные объекты</h5>
+                <p class="text-muted">Все предложения проходят модерацию</p>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="text-primary mb-3" style="font-size: 2.5rem;">⚡</div>
+                <h5>Быстрый поиск</h5>
+                <p class="text-muted">Умная система подбора по параметрам</p>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="text-primary mb-3" style="font-size: 2.5rem;">🛡️</div>
+                <h5>Безопасная сделка</h5>
+                <p class="text-muted">Защита интересов покупателей и продавцов</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-section {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+</style>
 {% endblock %}

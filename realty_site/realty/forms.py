@@ -83,19 +83,19 @@ class CommentForm(forms.ModelForm):
 class MessageForm(forms.ModelForm):
     class Meta:
         model = Message
-        fields = ('receiver', 'subject', 'content')
+        fields = ('content',)  # 👈 Только содержание, без темы
         widgets = {
-            'content': forms.Textarea(attrs={'rows': 4}),
+            'content': forms.Textarea(attrs={
+                'rows': 4,
+                'placeholder': 'Введите сообщение...',
+                'class': 'form-control'
+            }),
         }
 
     def __init__(self, *args, **kwargs):
-        self.sender = kwargs.pop('sender', None)
+        # sender больше не нужен для фильтрации, но оставим для совместимости
+        kwargs.pop('sender', None)
         super().__init__(*args, **kwargs)
-        if self.sender:
-            blocked_users = Blacklist.objects.filter(user=self.sender).values_list('blocked_user', flat=True)
-            self.fields['receiver'].queryset = CustomUser.objects.exclude(
-                id__in=blocked_users
-            ).exclude(id=self.sender.id)
 
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True, label='Email')

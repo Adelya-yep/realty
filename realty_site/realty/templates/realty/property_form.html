@@ -1,329 +1,344 @@
 {% extends 'realty/base.html' %}
 
 {% block content %}
-<div style="max-width: 800px; margin: 0 auto;">
-    <h1 class="text-center mb-4">{% if edit %}Редактирование{% else %}Добавление{% endif %} объекта недвижимости</h1>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="text-center mb-4">{% if edit %}Редактирование{% else %}Добавление{% endif %} объекта недвижимости</h1>
 
-    <!-- Временный блок отладки -->
-    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-        <h4 style="margin-top: 0; color: #856404;">🔍 Отладка загрузки файлов</h4>
-        <div><strong>Метод запроса:</strong> POST</div>
-        <div><strong>Поддержка FormData:</strong> <span id="formdata-support">Проверка...</span></div>
-        <div><strong>Выбранные файлы:</strong> <span id="debug-files">0</span></div>
-    </div>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
 
-    <div class="card">
-        <div class="card-body">
-            <form id="property-form" method="post" enctype="multipart/form-data">
-                {% csrf_token %}
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        Пожалуйста, исправьте ошибки в форме
+                    </div>
+                    {% endif %}
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label for="id_title">Название объекта *</label>
-                        {{ form.title }}
-                        <small class="error" id="title-error" style="color: red; display: block;"></small>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Название объекта *</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                            <div class="text-danger">{{ form.title.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Цена (руб) *</label>
+                            {{ form.price }}
+                            {% if form.price.errors %}
+                            <div class="text-danger">{{ form.price.errors }}</div>
+                            {% endif %}
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="id_price">Цена (руб) *</label>
-                        {{ form.price }}
-                        <small class="error" id="price-error" style="color: red; display: block;"></small>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="id_description">Описание *</label>
-                    {{ form.description }}
-                    <small class="error" id="description-error" style="color: red; display: block;"></small>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label for="id_property_type">Тип недвижимости *</label>
-                        {{ form.property_type }}
-                        <small class="error" id="property_type-error" style="color: red; display: block;"></small>
+                    <div class="mb-3">
+                        <label class="form-label">Описание *</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="text-danger">{{ form.description.errors }}</div>
+                        {% endif %}
                     </div>
 
-                    <div class="form-group">
-                        <label for="id_area">Площадь (кв.м) *</label>
-                        {{ form.area }}
-                        <small class="error" id="area-error" style="color: red; display: block;"></small>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Тип недвижимости *</label>
+                            {{ form.property_type }}
+                            {% if form.property_type.errors %}
+                            <div class="text-danger">{{ form.property_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Площадь (кв.м) *</label>
+                            {{ form.area }}
+                            {% if form.area.errors %}
+                            <div class="text-danger">{{ form.area.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Количество комнат</label>
+                            {{ form.rooms }}
+                            {% if form.rooms.errors %}
+                            <div class="text-danger">{{ form.rooms.errors }}</div>
+                            {% endif %}
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="id_rooms">Количество комнат</label>
-                        {{ form.rooms }}
-                        <small class="error" id="rooms-error" style="color: red; display: block;"></small>
+                    <div class="mb-3">
+                        <label class="form-label">Местоположение (адрес) *</label>
+                        {{ form.location }}
+                        {% if form.location.errors %}
+                            <div class="text-danger">{{ form.location.errors }}</div>
+                        {% endif %}
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label for="id_location">Местоположение (адрес) *</label>
-                    {{ form.location }}
-                    <small class="error" id="location-error" style="color: red; display: block;"></small>
-                </div>
-
-                <div class="form-group">
-                    <label for="id_status">Статус *</label>
-                    {{ form.status }}
-                    <small class="error" id="status-error" style="color: red; display: block;"></small>
-                </div>
-
-                <!-- Загрузка изображений -->
-                <div class="form-group">
-                    <label>Изображения</label>
-                    <div style="border: 2px dashed #dee2e6; border-radius: 8px; padding: 2rem; text-align: center; background: #f8f9fa; cursor: pointer;"
-                         onclick="document.getElementById('id_images').click()">
-                        <div style="font-size: 3rem; color: #6c757d;">📷</div>
-                        <h4 style="color: #6c757d; margin: 1rem 0 0.5rem 0;">Нажмите для загрузки изображений</h4>
-                        <p style="color: #6c757d; margin: 0; font-size: 0.9rem;">
-                            Можно выбрать несколько файлов<br>
-                            Первое изображение будет основным
-                        </p>
+                    <div class="mb-3">
+                        <label class="form-label">Статус *</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <div class="text-danger">{{ form.status.errors }}</div>
+                        {% endif %}
                     </div>
-                    <input type="file" name="images" id="id_images" multiple accept="image/*" style="display: none;" onchange="showSelectedFiles(this)">
-                    <div id="selected-files" style="margin-top: 1rem;"></div>
-                    <small class="error" id="images-error" style="color: red; display: block;"></small>
-                </div>
 
-                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="submit" class="btn" style="flex: 1;">
-                        {% if edit %}Сохранить изменения{% else %}Добавить объект{% endif %}
-                    </button>
-                    <a href="{% if edit %}{% url 'property_detail' object.pk %}{% else %}{% url 'property_list' %}{% endif %}"
-                       class="btn" style="background: #6c757d; flex: 0.5;">
-                        Отмена
-                    </a>
-                </div>
-            </form>
+                    <!-- КРАСИВАЯ ЗОНА ЗАГРУЗКИ ИЗОБРАЖЕНИЙ -->
+                    <div class="mb-4">
+                        <label class="form-label">Изображения недвижимости</label>
 
-            <div id="form-message" style="margin-top: 1rem; padding: 1rem; border-radius: 4px; display: none;"></div>
+                        <!-- Скрытое поле для файлов -->
+                        <input type="file" name="images" multiple accept="image/*" id="image-input" style="display: none;">
+
+                        <!-- Красивая зона загрузки -->
+                        <div class="upload-zone" id="upload-zone">
+                            <div class="upload-content">
+                                <div class="upload-icon">📷</div>
+                                <h4>Добавьте фотографии недвижимости</h4>
+                                <p class="text-muted">Перетащите сюда изображения или нажмите для выбора</p>
+                                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('image-input').click()">
+                                    Выбрать файлы
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Преview выбранных файлов -->
+                        <div id="file-preview" class="mt-3"></div>
+
+                        <small class="text-muted">Можно выбрать несколько файлов. Первое изображение будет основным. Максимальный размер: 5MB на файл.</small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            {% if edit %}Сохранить изменения{% else %}Добавить объект{% endif %}
+                        </button>
+                        <a href="{% if edit %}{% url 'property_detail' property.pk %}{% else %}{% url 'property_list' %}{% endif %}"
+                           class="btn btn-secondary">
+                            Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
-<script>
-function showSelectedFiles(input) {
-    const filesContainer = document.getElementById('selected-files');
-    const debugFiles = document.getElementById('debug-files');
-    filesContainer.innerHTML = '';
-
-    console.log('🔍 Файлы выбраны:', input.files);
-
-    if (input.files.length > 0) {
-        debugFiles.textContent = input.files.length;
-
-        const filesList = document.createElement('div');
-        filesList.style.background = '#e9ecef';
-        filesList.style.padding = '1rem';
-        filesList.style.borderRadius = '4px';
-        filesList.style.marginTop = '0.5rem';
-
-        const title = document.createElement('div');
-        title.style.fontWeight = 'bold';
-        title.style.marginBottom = '0.5rem';
-        title.textContent = `Выбрано файлов: ${input.files.length}`;
-        filesList.appendChild(title);
-
-        for (let i = 0; i < input.files.length; i++) {
-            const fileItem = document.createElement('div');
-            fileItem.style.display = 'flex';
-            fileItem.style.alignItems = 'center';
-            fileItem.style.gap = '0.5rem';
-            fileItem.style.marginBottom = '0.25rem';
-            fileItem.style.fontSize = '0.9rem';
-
-            const icon = document.createElement('span');
-            icon.textContent = '🖼️';
-            fileItem.appendChild(icon);
-
-            const fileName = document.createElement('span');
-            fileName.textContent = `${input.files[i].name} (${(input.files[i].size / 1024).toFixed(1)} KB)`;
-            fileItem.appendChild(fileName);
-
-            filesList.appendChild(fileItem);
-        }
-
-        filesContainer.appendChild(filesList);
-    } else {
-        debugFiles.textContent = '0';
-    }
-}
-
-$(document).ready(function() {
-    // Проверка поддержки FormData
-    if (window.FormData) {
-        $('#formdata-support').text('✅ Поддерживается').css('color', 'green');
-    } else {
-        $('#formdata-support').text('❌ Не поддерживается').css('color', 'red');
-    }
-
-    // Обработка отправки формы
-    $('#property-form').on('submit', function(e) {
-        e.preventDefault();
-
-        // Очищаем ошибки
-        $('.error').text('');
-        $('#form-message').hide().removeClass('alert-success alert-danger');
-
-        // Показываем загрузку
-        const submitBtn = $(this).find('button[type="submit"]');
-        const originalText = submitBtn.text();
-        submitBtn.text('{% if edit %}Сохранение...{% else %}Добавление...{% endif %}').prop('disabled', true);
-
-        // Создаем FormData для отправки файлов
-        const formData = new FormData(this);
-
-        // Добавляем отладочную информацию
-        const files = document.getElementById('id_images').files;
-        console.log('🔍 Отправка файлов:', files);
-        for (let i = 0; i < files.length; i++) {
-            console.log(`🔍 Файл ${i}:`, files[i].name, files[i].size, files[i].type);
-        }
-
-        $.ajax({
-            type: 'POST',
-            url: window.location.href,
-            data: formData,
-            processData: false,  // Важно! Не обрабатывать данные
-            contentType: false,  // Важно! Не устанавливать Content-Type
-            success: function(response) {
-                console.log('🔍 Ответ сервера:', response);
-                if (response.success) {
-                    $('#form-message')
-                        .text('{% if edit %}Изменения сохранены!{% else %}Объект успешно добавлен!{% endif %} Перенаправление...')
-                        .addClass('alert-success')
-                        .show();
-
-                    setTimeout(function() {
-                        if (response.redirect_url) {
-                            window.location.href = response.redirect_url;
-                        } else {
-                            window.location.href = '{% url "property_list" %}';
-                        }
-                    }, 1500);
-                } else {
-                    console.log('🔍 Ошибки формы:', response.errors);
-                    // Показываем ошибки
-                    for (let field in response.errors) {
-                        $(`#${field}-error`).text(response.errors[field][0].message);
-                    }
-                    $('#form-message')
-                        .text('Пожалуйста, исправьте ошибки в форме')
-                        .addClass('alert-danger')
-                        .show();
-                }
-            },
-            error: function(xhr, status, error) {
-                console.log('🔍 Ошибка AJAX:', error);
-                console.log('🔍 Статус:', status);
-                console.log('🔍 Ответ сервера:', xhr.responseText);
-                $('#form-message')
-                    .text('Произошла ошибка. Пожалуйста, попробуйте еще раз.')
-                    .addClass('alert-danger')
-                    .show();
-            },
-            complete: function() {
-                submitBtn.text(originalText).prop('disabled', false);
-            }
-        });
-    });
-
-    // Очистка ошибок при вводе
-    $('input, select, textarea').on('input', function() {
-        const fieldName = $(this).attr('name');
-        $(`#${fieldName}-error`).text('');
-    });
-});
-</script>
-
 <style>
-.card {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.card-body {
-    padding: 2rem;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    display: block;
-    color: #2c3e50;
-}
-
-.form-control {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 0.75rem;
-    font-size: 1rem;
-    width: 100%;
-    box-sizing: border-box;
-    transition: border-color 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-    outline: none;
-}
-
-.btn {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
+.upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: #f8f9fa;
     cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
 }
 
-.btn:hover {
-    background: #2980b9;
-    color: white;
-    text-decoration: none;
+.upload-zone:hover {
+    border-color: #3498db;
+    background: #e3f2fd;
 }
 
-.alert-success {
-    background-color: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
-    padding: 12px;
-    border-radius: 4px;
+.upload-zone.dragover {
+    border-color: #3498db;
+    background: #bbdefb;
+    transform: scale(1.02);
 }
 
-.alert-danger {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-    padding: 12px;
-    border-radius: 4px;
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #6c757d;
 }
 
-.error {
-    color: #dc3545;
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
+.upload-zone:hover .upload-icon {
+    color: #3498db;
+}
+
+.upload-content h4 {
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.upload-content p {
+    margin-bottom: 1.5rem;
+}
+
+/* Стили для превью файлов */
+.file-preview-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.file-preview-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.file-preview-image {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
     display: block;
 }
 
-.text-center {
-    text-align: center;
+.file-preview-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
 }
 
-.mb-4 {
-    margin-bottom: 1.5rem;
+.file-remove {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.file-remove:hover {
+    background: white;
+    transform: scale(1.1);
+}
+
+.empty-preview {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('image-input');
+    const filePreview = document.getElementById('file-preview');
+
+    // Обработчик клика по зоне загрузки
+    uploadZone.addEventListener('click', function(e) {
+        if (!e.target.closest('.file-remove')) {
+            fileInput.click();
+        }
+    });
+
+    // Drag and drop функционал
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            updateFilePreview();
+        }
+    });
+
+    // Обработчик выбора файлов через input
+    fileInput.addEventListener('change', function() {
+        updateFilePreview();
+    });
+
+    // Функция обновления превью файлов
+    function updateFilePreview() {
+        const files = fileInput.files;
+        filePreview.innerHTML = '';
+
+        if (files.length === 0) {
+            filePreview.innerHTML = '<div class="empty-preview">Файлы не выбраны</div>';
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'file-preview-container';
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const item = document.createElement('div');
+            item.className = 'file-preview-item';
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'file-preview-image';
+                    img.alt = file.name;
+
+                    const info = document.createElement('div');
+                    info.className = 'file-preview-info';
+                    info.textContent = file.name.length > 15 ?
+                        file.name.substring(0, 12) + '...' : file.name;
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'file-remove';
+                    removeBtn.innerHTML = '×';
+                    removeBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        removeFile(i);
+                    };
+
+                    item.appendChild(img);
+                    item.appendChild(info);
+                    item.appendChild(removeBtn);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                item.innerHTML = `
+                    <div style="height: 100px; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                        <span>📄</span>
+                    </div>
+                    <div class="file-preview-info">${file.name}</div>
+                    <button class="file-remove" onclick="removeFile(${i})">×</button>
+                `;
+            }
+
+            container.appendChild(item);
+        }
+
+        filePreview.appendChild(container);
+    }
+
+    // Функция удаления файла
+    function removeFile(index) {
+        const files = Array.from(fileInput.files);
+        files.splice(index, 1);
+
+        // Создаем новый FileList
+        const dataTransfer = new DataTransfer();
+        files.forEach(file => dataTransfer.items.add(file));
+        fileInput.files = dataTransfer.files;
+
+        updateFilePreview();
+    }
+
+    // Инициализация превью
+    updateFilePreview();
+});
+</script>
 {% endblock %}

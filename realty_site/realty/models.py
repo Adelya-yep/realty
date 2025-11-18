@@ -99,16 +99,34 @@ class Comment(models.Model):
         return f"Комментарий от {self.author.username}"
 
 
+class Dialogue(models.Model):
+    """Модель диалога между двумя пользователями"""
+    participant1 = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='dialogues1')
+    participant2 = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='dialogues2')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('participant1', 'participant2')
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Диалог: {self.participant1} - {self.participant2}"
+
+    def get_other_participant(self, user):
+        """Получить второго участника диалога"""
+        return self.participant2 if self.participant1 == user else self.participant1
+
 class Message(models.Model):
+    dialogue = models.ForeignKey(Dialogue, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_messages')
-    subject = models.CharField('Тема', max_length=200)
     content = models.TextField('Содержание')
     is_read = models.BooleanField('Прочитано', default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['created_at']
 
     def __str__(self):
-        return f"Сообщение от {self.sender.username} к {self.receiver.username}"
+        return f"Сообщение от {self.sender.username}"

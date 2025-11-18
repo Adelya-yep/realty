@@ -1,64 +1,37 @@
 {% extends 'realty/base.html' %}
 
 {% block content %}
-<h1>Отправка сообщения</h1>
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-primary mb-4">Начать диалог</h2>
 
-<form id="message-form">
-    {% csrf_token %}
-    
-    <div class="form-group">
-        <label for="id_receiver">Получатель:</label>
-        {{ form.receiver }}
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Выберите пользователя</label>
+                        <select name="receiver" class="form-select" required>
+                            <option value="">Выберите пользователя...</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Сообщение</label>
+                        <textarea name="content" class="form-control" rows="4" placeholder="Введите ваше сообщение..." required></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Начать диалог</button>
+                        <a href="{% url 'message_list' %}" class="btn btn-secondary">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-
-    <div class="form-group">
-        <label for="id_subject">Тема сообщения:</label>
-        {{ form.subject }}
-    </div>
-
-    <div class="form-group">
-        <label for="id_content">Текст сообщения:</label>
-        {{ form.content }}
-    </div>
-
-    <button type="submit" class="btn">Отправить сообщение</button>
-    <a href="{% url 'message_list' %}" class="btn">Отмена</a>
-</form>
-
-<div id="message-result" style="margin-top: 1rem;"></div>
-
-<script>
-$(document).ready(function() {
-    $('#message-form').on('submit', function(e) {
-        e.preventDefault();
-        
-        $('#message-result').text('').removeClass('success error');
-        
-        $.ajax({
-            type: 'POST',
-            url: '{% url "message_send" %}',
-            data: $(this).serialize(),
-            success: function(response) {
-                if (response.success) {
-                    $('#message-result').text('Сообщение успешно отправлено!').addClass('success');
-                    setTimeout(function() {
-                        window.location.href = '{% url "message_list" %}';
-                    }, 1000);
-                } else {
-                    // Показываем ошибки
-                    $('#message-result').text('Ошибка при отправке сообщения').addClass('error');
-                    if (response.errors) {
-                        for (var field in response.errors) {
-                            alert(response.errors[field][0].message);
-                        }
-                    }
-                }
-            },
-            error: function() {
-                $('#message-result').text('Ошибка при отправке сообщения').addClass('error');
-            }
-        });
-    });
-});
-</script>
+</div>
 {% endblock %}
