@@ -280,7 +280,10 @@ def profile_update(request):
             return redirect('profile')
         else:
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': False, 'errors': form.errors})
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [{'message': error} for error in error_list]
+                return JsonResponse({'success': False, 'errors': errors})
     else:
         form = ProfileUpdateForm(instance=request.user)
 
