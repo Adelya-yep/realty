@@ -21,9 +21,9 @@ urlpatterns = [
 
     # Сообщения (диалоги)
     path('messages/', views.message_list, name='message_list'),
-    path('messages/send/', views.message_send, name='message_send'),
-    path('messages/send/<int:user_id>/', views.message_send, name='message_send_to'),
-    path('messages/dialogue/<int:user_id>/', views.dialogue_detail, name='dialogue_detail'),
+    path('messages/send/', views.send_message, name='send_message'),
+    path('messages/send/<int:user_id>/', views.send_message, name='send_message_to'),
+    path('messages/chat/<int:user_id>/', views.chat_with_user, name='chat_with_user'),
 
     # Черный список
     path('blacklist/add/<int:user_id>/', views.blacklist_add, name='blacklist_add'),

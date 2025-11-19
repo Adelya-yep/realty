@@ -118,15 +118,14 @@ class Dialogue(models.Model):
         return self.participant2 if self.participant1 == user else self.participant1
 
 class Message(models.Model):
-    dialogue = models.ForeignKey(Dialogue, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_messages')
-    content = models.TextField('Содержание')
-    is_read = models.BooleanField('Прочитано', default=False)
+    content = models.TextField('Сообщение')
     created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['created_at']
 
     def __str__(self):
-        return f"Сообщение от {self.sender.username}"
+        return f"{self.sender} → {self.receiver}: {self.content[:20]}"

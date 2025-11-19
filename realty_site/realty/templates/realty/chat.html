@@ -1,0 +1,43 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<!-- Скрываем системные сообщения Django в чате -->
+<style>
+.container.mt-3 {
+    display: none !important;
+}
+.alert {
+    display: none !important;
+}
+</style>
+
+<div class="card">
+    <div class="card-header">
+        <h4>Чат с {{ other_user.get_full_name|default:other_user.username }}</h4>
+        <a href="{% url 'message_list' %}" class="btn btn-sm btn-outline-secondary">← Назад</a>
+    </div>
+
+    <div class="card-body" style="height: 400px; overflow-y: auto;">
+        {% for message in messages %}
+        <div class="mb-3 {% if message.sender == user %}text-end{% endif %}">
+            <div class="d-inline-block p-2 rounded {% if message.sender == user %}bg-primary text-white{% else %}bg-light{% endif %}">
+                {{ message.content|linebreaksbr }}
+            </div>
+            <div class="small text-muted mt-1">
+                {{ message.created_at|date:"H:i" }}
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-muted text-center">Нет сообщений</p>
+        {% endfor %}
+    </div>
+    
+    <div class="card-footer">
+        <form method="post" class="d-flex">
+            {% csrf_token %}
+            <input type="text" name="content" class="form-control me-2" placeholder="Введите сообщение..." required>
+            <button type="submit" class="btn btn-primary">Отправить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

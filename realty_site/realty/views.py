@@ -1,6 +1,7 @@
 import json
 import random
 import string
+from datetime import datetime
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -292,80 +293,95 @@ def profile_update(request):
 
 @login_required
 def message_list(request):
-    """Список диалогов пользователя"""
-    dialogues = Dialogue.objects.filter(
-        Q(participant1=request.user) | Q(participant2=request.user)
-    ).select_related('participant1', 'participant2').prefetch_related('messages').order_by('-updated_at')
+    """Простой список сообщений - последние диалоги"""
+    # Получаем последнее сообщение с каждым пользователем
+    sent_messages = Message.objects.filter(sender=request.user)
+    received_messages = Message.objects.filter(receiver=request.user)
 
-    # Добавляем информацию о последнем сообщении и количестве непрочитанных
-    dialogues_data = []
-    for dialogue in dialogues:
-        other_user = dialogue.get_other_participant(request.user)
-        last_message = dialogue.messages.last()
-        unread_count = dialogue.messages.filter(receiver=request.user, is_read=False).count()
+    # Собираем уникальных собеседников
+    users = set()
+    for msg in sent_messages:
+        users.add(msg.receiver)
+    for msg in received_messages:
+        users.add(msg.sender)
 
-        dialogues_data.append({
-            'dialogue': dialogue,
-            'other_user': other_user,
-            'last_message': last_message,
+    # Для каждого пользователя находим последнее сообщение
+    dialogues = []
+    for user in users:
+        last_msg = Message.objects.filter(
+            Q(sender=request.user, receiver=user) | Q(sender=user, receiver=request.user)
+        ).order_by('-created_at').first()
+
+        unread_count = Message.objects.filter(sender=user, receiver=request.user, is_read=False).count()
+
+        dialogues.append({
+            'user': user,
+            'last_message': last_msg,
             'unread_count': unread_count
         })
 
-    return render(request, 'realty/messages.html', {'dialogues_data': dialogues_data})
+    # Сортируем по времени последнего сообщения
+    dialogues.sort(key=lambda x: x['last_message'].created_at if x['last_message'] else datetime.min, reverse=True)
+
+    return render(request, 'realty/messages.html', {'dialogues': dialogues})
 
 
 @login_required
-def dialogue_detail(request, user_id):
-    """Просмотр диалога с конкретным пользователем"""
+def chat_with_user(request, user_id):
+    """Чат с конкретным пользователем"""
+    # Очищаем системные сообщения при входе в чат
+    from django.contrib import messages as message_framework  # 👈 Переименовываем импорт
+    storage = message_framework.get_messages(request)
+    for message in storage:
+        pass  # Просто читаем все сообщения чтобы очистить
+
     other_user = get_object_or_404(CustomUser, id=user_id)
-
-    # Находим или создаем диалог
-    dialogue, created = Dialogue.objects.get_or_create(
-        participant1=min(request.user, other_user, key=lambda u: u.id),
-        participant2=max(request.user, other_user, key=lambda u: u.id)
-    )
-
-    # Помечаем сообщения как прочитанные
-    dialogue.messages.filter(receiver=request.user, is_read=False).update(is_read=True)
 
     if request.method == 'POST':
         content = request.POST.get('content', '').strip()
         if content:
             Message.objects.create(
-                dialogue=dialogue,
                 sender=request.user,
                 receiver=other_user,
                 content=content
             )
-            dialogue.save()  # Обновляем updated_at
-            return redirect('dialogue_detail', user_id=user_id)
+            return redirect('chat_with_user', user_id=user_id)
 
-    messages_list = dialogue.messages.select_related('sender', 'receiver').all()
+    # Получаем все сообщения между пользователями
+    messages_list = Message.objects.filter(  # 👈 Переименовываем переменную
+        Q(sender=request.user, receiver=other_user) | Q(sender=other_user, receiver=request.user)
+    ).order_by('created_at')
 
-    return render(request, 'realty/dialogue_detail.html', {
-        'dialogue': dialogue,
+    # Помечаем сообщения как прочитанные
+    Message.objects.filter(sender=other_user, receiver=request.user, is_read=False).update(is_read=True)
+
+    return render(request, 'realty/chat.html', {
         'other_user': other_user,
-        'messages': messages_list
+        'messages': messages_list  # 👈 Теперь передаем messages_list
     })
 
 
 @login_required
-def message_send(request, user_id=None):
-    """Начать новый диалог или отправить сообщение"""
+def send_message(request, user_id=None):
+    """Отправить сообщение - простая форма"""
     if user_id:
-        return dialogue_detail(request, user_id)
+        other_user = get_object_or_404(CustomUser, id=user_id)
 
-    if request.method == 'POST':
-        receiver_id = request.POST.get('receiver')
-        content = request.POST.get('content', '').strip()
+        if request.method == 'POST':
+            content = request.POST.get('content', '').strip()
+            if content:
+                Message.objects.create(
+                    sender=request.user,
+                    receiver=other_user,
+                    content=content
+                )
+                return redirect('chat_with_user', user_id=user_id)
 
-        if receiver_id and content:
-            receiver = get_object_or_404(CustomUser, id=receiver_id)
-            return dialogue_detail(request, receiver.id)
+        return render(request, 'realty/send_message.html', {'other_user': other_user})
 
-    # Показываем форму для выбора получателя
+    # Если user_id не передан - показать выбор пользователя
     users = CustomUser.objects.exclude(id=request.user.id)
-    return render(request, 'realty/message_send.html', {'users': users})
+    return render(request, 'realty/choose_user.html', {'users': users})
 
 @login_required
 def blacklist_add(request, user_id):
