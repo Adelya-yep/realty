@@ -114,10 +114,44 @@
                         <span style="background: {% if property.status == 'active' %}#28a745{% elif property.status == 'sold' %}#dc3545{% else %}#6c757d{% endif %}; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">
                             {{ property.get_status_display }}
                         </span>
+                        {% if property.status == 'sold' %}
+                        <span style="color: #dc3545; margin-left: 0.5rem;">✓ Продано</span>
+                        {% elif property.status == 'hidden' %}
+                        <span style="color: #6c757d; margin-left: 0.5rem;">👁️ Скрыто</span>
+                        {% endif %}
                     </p>
                     <p style="margin: 0.25rem 0; font-size: 0.9rem; color: #666;">Просмотров: {{ property.views }}</p>
-                    <div style="margin-top: 1rem;">
+
+                    <!-- Кнопки управления -->
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         <a href="{% url 'property_edit' property.pk %}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Редактировать</a>
+
+                        {% if property.status == 'active' %}
+                        <form method="post" action="{% url 'property_mark_sold' property.pk %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="background: #28a745; padding: 0.5rem 1rem; font-size: 0.9rem;">Продано</button>
+                        </form>
+                        <form method="post" action="{% url 'property_hide' property.pk %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="background: #6c757d; padding: 0.5rem 1rem; font-size: 0.9rem;">Скрыть</button>
+                        </form>
+                        {% elif property.status == 'sold' %}
+                        <form method="post" action="{% url 'property_reactivate' property.pk %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="background: #17a2b8; padding: 0.5rem 1rem; font-size: 0.9rem;">Вернуть в активные</button>
+                        </form>
+                        {% elif property.status == 'hidden' %}
+                        <form method="post" action="{% url 'property_reactivate' property.pk %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="background: #17a2b8; padding: 0.5rem 1rem; font-size: 0.9rem;">Активировать</button>
+                        </form>
+                        {% endif %}
+
+                        <form method="post" action="{% url 'property_delete' property.pk %}" style="display: inline;"
+                              onsubmit="return confirm('Вы уверены, что хотите удалить этот объект?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="background: #dc3545; padding: 0.5rem 1rem; font-size: 0.9rem;">Удалить</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -138,7 +172,6 @@ function previewAvatar(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            // Создаем новый элемент изображения
             const newAvatar = document.createElement('img');
             newAvatar.src = e.target.result;
             newAvatar.alt = 'Аватар';
@@ -148,14 +181,13 @@ function previewAvatar(input) {
             newAvatar.style.objectFit = 'cover';
             newAvatar.style.border = '3px solid #3498db';
 
-            // Заменяем содержимое label
             const label = document.querySelector('label[for="id_avatar"]');
             label.innerHTML = '';
             label.appendChild(newAvatar);
         };
         reader.readAsDataURL(input.files[0]);
     }
-};
+}
 </script>
 
 <style>

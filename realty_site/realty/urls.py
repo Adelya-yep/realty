@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('about/', views.about, name='about'),
 
     # Аутентификация
     path('login/', auth_views.LoginView.as_view(template_name='realty/login.html'), name='login'),
@@ -19,10 +20,16 @@ urlpatterns = [
     path('property/create/', views.property_create, name='property_create'),
     path('property/<int:pk>/edit/', views.property_edit, name='property_edit'),
 
-    # Сообщения (диалоги)
+    # 👇 ДОБАВЬТЕ ЭТИ НОВЫЕ URLS
+    path('property/<int:pk>/sold/', views.property_mark_sold, name='property_mark_sold'),
+    path('property/<int:pk>/hide/', views.property_hide, name='property_hide'),
+    path('property/<int:pk>/activate/', views.property_reactivate, name='property_reactivate'),
+    path('property/<int:pk>/delete/', views.property_delete, name='property_delete'),
+
+    # Сообщения
     path('messages/', views.message_list, name='message_list'),
-    path('messages/send/', views.send_message, name='send_message'),
-    path('messages/send/<int:user_id>/', views.send_message, name='send_message_to'),
+    path('messages/send/', views.send_message, name='message_send'),
+    path('messages/send/<int:user_id>/', views.send_message, name='message_send_to'),
     path('messages/chat/<int:user_id>/', views.chat_with_user, name='chat_with_user'),
 
     # Черный список

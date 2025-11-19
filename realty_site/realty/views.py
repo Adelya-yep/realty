@@ -412,3 +412,38 @@ def custom_logout(request):
         return redirect('home')
     # Для GET запросов перенаправляем на домашнюю страницу
     return redirect('home')
+
+@login_required
+def property_mark_sold(request, pk):
+    """Пометить объект как проданный"""
+    property_obj = get_object_or_404(Property, pk=pk, created_by=request.user)
+    property_obj.status = 'sold'
+    property_obj.save()
+    messages.success(request, f'Объект "{property_obj.title}" помечен как проданный')
+    return redirect('profile')
+
+@login_required
+def property_hide(request, pk):
+    """Скрыть объект"""
+    property_obj = get_object_or_404(Property, pk=pk, created_by=request.user)
+    property_obj.status = 'hidden'
+    property_obj.save()
+    messages.success(request, f'Объект "{property_obj.title}" скрыт')
+    return redirect('profile')
+
+@login_required
+def property_reactivate(request, pk):
+    """Вернуть объект в активные"""
+    property_obj = get_object_or_404(Property, pk=pk, created_by=request.user)
+    property_obj.status = 'active'
+    property_obj.save()
+    messages.success(request, f'Объект "{property_obj.title}" активирован')
+    return redirect('profile')
+
+@login_required
+def property_delete(request, pk):
+    """Удалить объект"""
+    property_obj = get_object_or_404(Property, pk=pk, created_by=request.user)
+    property_obj.delete()
+    messages.success(request, f'Объект "{property_obj.title}" удален')
+    return redirect('profile')
