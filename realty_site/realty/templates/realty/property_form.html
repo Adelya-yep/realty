@@ -81,12 +81,12 @@
                         {% endif %}
                     </div>
 
-                    <!-- КРАСИВАЯ ЗОНА ЗАГРУЗКИ ИЗОБРАЖЕНИЙ -->
-                    <div class="mb-4">
-                        <label class="form-label">Изображения недвижимости</label>
+                    <!-- Загрузка изображений -->
+                    <div class="form-group">
+                        <label class="form-label">Изображения</label>
 
                         <!-- Скрытое поле для файлов -->
-                        <input type="file" name="images" multiple accept="image/*" id="image-input" style="display: none;">
+                        <input type="file" name="images" id="id_images" multiple accept="image/*" style="display: none;">
 
                         <!-- Красивая зона загрузки -->
                         <div class="upload-zone" id="upload-zone">
@@ -94,16 +94,40 @@
                                 <div class="upload-icon">📷</div>
                                 <h4>Добавьте фотографии недвижимости</h4>
                                 <p class="text-muted">Перетащите сюда изображения или нажмите для выбора</p>
-                                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('image-input').click()">
+                                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('id_images').click()">
                                     Выбрать файлы
                                 </button>
                             </div>
                         </div>
 
                         <!-- Преview выбранных файлов -->
-                        <div id="file-preview" class="mt-3"></div>
+                        <div id="selected-files" class="mt-3"></div>
 
-                        <small class="text-muted">Можно выбрать несколько файлов. Первое изображение будет основным. Максимальный размер: 5MB на файл.</small>
+                        <!-- Существующие изображения (только при редактировании) -->
+                        {% if edit and property.images.all %}
+                        <div class="existing-images mt-4">
+                            <h5>Текущие изображения</h5>
+                            <div class="existing-images-grid">
+                                {% for image in property.images.all %}
+                                <div class="existing-image-item">
+                                    <img src="{{ image.image.url }}" alt="Изображение {{ forloop.counter }}">
+                                    <div class="image-actions">
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                                onclick="deleteImage({{ image.id }})">Удалить</button>
+                                        {% if not image.is_main %}
+                                        <button type="button" class="btn btn-sm btn-primary"
+                                                onclick="setAsMain({{ image.id }})">Сделать основной</button>
+                                        {% else %}
+                                        <span class="badge bg-success">Основное</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <small class="text-muted">Можно выбрать несколько файлов. Первое изображение будет основным.</small>
                     </div>
 
                     <div class="d-flex gap-2">
@@ -130,18 +154,11 @@
     background: #f8f9fa;
     cursor: pointer;
     transition: all 0.3s ease;
-    position: relative;
 }
 
 .upload-zone:hover {
     border-color: #3498db;
     background: #e3f2fd;
-}
-
-.upload-zone.dragover {
-    border-color: #3498db;
-    background: #bbdefb;
-    transform: scale(1.02);
 }
 
 .upload-icon {
@@ -164,181 +181,219 @@
 }
 
 /* Стили для превью файлов */
-.file-preview-container {
+.upload-preview {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.preview-item {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    text-align: center;
+    transition: border-color 0.3s ease;
+    position: relative;
+}
+
+.preview-item:hover {
+    border-color: #3498db;
+}
+
+.preview-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+
+.preview-info {
+    padding: 0.5rem;
+    background: #f8f9fa;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.main-badge {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background: #28a745;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.file-info {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background: #e7f3ff;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* Стили для существующих изображений */
+.existing-images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 1rem;
     margin-top: 1rem;
 }
 
-.file-preview-item {
-    position: relative;
+.existing-image-item {
+    border: 2px solid #e9ecef;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.file-preview-image {
-    width: 100%;
-    height: 100px;
-    object-fit: cover;
-    display: block;
-}
-
-.file-preview-info {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-
-.file-remove {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: rgba(255,255,255,0.9);
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.8rem;
-}
-
-.file-remove:hover {
-    background: white;
-    transform: scale(1.1);
-}
-
-.empty-preview {
     text-align: center;
-    padding: 2rem;
-    color: #6c757d;
+}
+
+.existing-image-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+
+.image-actions {
+    padding: 0.5rem;
+    background: #f8f9fa;
+}
+
+.image-actions .btn {
+    margin: 0.1rem;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
 }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const uploadZone = document.getElementById('upload-zone');
-    const fileInput = document.getElementById('image-input');
-    const filePreview = document.getElementById('file-preview');
+// Функция для показа выбранных файлов
+function showSelectedFiles(input) {
+    const filesContainer = document.getElementById('selected-files');
+    filesContainer.innerHTML = '';
 
-    // Обработчик клика по зоне загрузки
-    uploadZone.addEventListener('click', function(e) {
-        if (!e.target.closest('.file-remove')) {
-            fileInput.click();
+    if (input.files.length > 0) {
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'upload-preview';
+
+        let imagesLoaded = 0;
+        const totalImages = Array.from(input.files).filter(file => file.type.startsWith('image/')).length;
+
+        for (let i = 0; i < input.files.length; i++) {
+            const file = input.files[i];
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'preview-item';
+
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = file.name;
+
+                    const fileName = document.createElement('div');
+                    fileName.className = 'preview-info';
+                    fileName.textContent = file.name.length > 20 ?
+                        file.name.substring(0, 17) + '...' : file.name;
+
+                    // Пометка для основного изображения
+                    if (i === 0) {
+                        const mainBadge = document.createElement('div');
+                        mainBadge.className = 'main-badge';
+                        mainBadge.textContent = 'Основное';
+                        previewItem.appendChild(mainBadge);
+                    }
+
+                    previewItem.appendChild(img);
+                    previewItem.appendChild(fileName);
+                    previewContainer.appendChild(previewItem);
+
+                    imagesLoaded++;
+
+                    if (imagesLoaded === totalImages) {
+                        filesContainer.appendChild(previewContainer);
+
+                        const info = document.createElement('div');
+                        info.className = 'file-info';
+                        info.innerHTML = `<strong>Выбрано файлов: ${input.files.length}</strong>. Первое изображение будет отмечено как основное.`;
+                        filesContainer.appendChild(info);
+                    }
+                };
+
+                reader.readAsDataURL(file);
+            }
+        }
+    } else {
+        filesContainer.innerHTML = '<div class="text-muted text-center py-3">Файлы не выбраны</div>';
+    }
+}
+
+// Функции для управления существующими изображениями
+function deleteImage(imageId) {
+    if (confirm('Вы уверены, что хотите удалить это изображение?')) {
+        fetch(`/property/image/${imageId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            }
+        });
+    }
+}
+
+function setAsMain(imageId) {
+    fetch(`/property/image/${imageId}/set_main/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    }).then(response => {
+        if (response.ok) {
+            location.reload();
         }
     });
+}
 
-    // Drag and drop функционал
+// Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('id_images');
+    const uploadZone = document.getElementById('upload-zone');
+
+    // Обработчик выбора файлов
+    fileInput.addEventListener('change', function() {
+        showSelectedFiles(this);
+    });
+
+    // Drag and drop
     uploadZone.addEventListener('dragover', function(e) {
         e.preventDefault();
-        uploadZone.classList.add('dragover');
+        uploadZone.style.borderColor = '#3498db';
+        uploadZone.style.background = '#bbdefb';
     });
 
     uploadZone.addEventListener('dragleave', function(e) {
         e.preventDefault();
-        uploadZone.classList.remove('dragover');
+        uploadZone.style.borderColor = '#dee2e6';
+        uploadZone.style.background = '#f8f9fa';
     });
 
     uploadZone.addEventListener('drop', function(e) {
         e.preventDefault();
-        uploadZone.classList.remove('dragover');
+        uploadZone.style.borderColor = '#dee2e6';
+        uploadZone.style.background = '#f8f9fa';
 
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            fileInput.files = files;
-            updateFilePreview();
-        }
+        fileInput.files = e.dataTransfer.files;
+        showSelectedFiles(fileInput);
     });
-
-    // Обработчик выбора файлов через input
-    fileInput.addEventListener('change', function() {
-        updateFilePreview();
-    });
-
-    // Функция обновления превью файлов
-    function updateFilePreview() {
-        const files = fileInput.files;
-        filePreview.innerHTML = '';
-
-        if (files.length === 0) {
-            filePreview.innerHTML = '<div class="empty-preview">Файлы не выбраны</div>';
-            return;
-        }
-
-        const container = document.createElement('div');
-        container.className = 'file-preview-container';
-
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const item = document.createElement('div');
-            item.className = 'file-preview-item';
-
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.className = 'file-preview-image';
-                    img.alt = file.name;
-
-                    const info = document.createElement('div');
-                    info.className = 'file-preview-info';
-                    info.textContent = file.name.length > 15 ?
-                        file.name.substring(0, 12) + '...' : file.name;
-
-                    const removeBtn = document.createElement('button');
-                    removeBtn.className = 'file-remove';
-                    removeBtn.innerHTML = '×';
-                    removeBtn.onclick = function(e) {
-                        e.stopPropagation();
-                        removeFile(i);
-                    };
-
-                    item.appendChild(img);
-                    item.appendChild(info);
-                    item.appendChild(removeBtn);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                item.innerHTML = `
-                    <div style="height: 100px; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
-                        <span>📄</span>
-                    </div>
-                    <div class="file-preview-info">${file.name}</div>
-                    <button class="file-remove" onclick="removeFile(${i})">×</button>
-                `;
-            }
-
-            container.appendChild(item);
-        }
-
-        filePreview.appendChild(container);
-    }
-
-    // Функция удаления файла
-    function removeFile(index) {
-        const files = Array.from(fileInput.files);
-        files.splice(index, 1);
-
-        // Создаем новый FileList
-        const dataTransfer = new DataTransfer();
-        files.forEach(file => dataTransfer.items.add(file));
-        fileInput.files = dataTransfer.files;
-
-        updateFilePreview();
-    }
 
     // Инициализация превью
-    updateFilePreview();
+    document.getElementById('selected-files').innerHTML = '<div class="text-muted text-center py-3">Файлы не выбраны</div>';
 });
 </script>
 {% endblock %}

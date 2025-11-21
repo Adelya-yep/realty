@@ -20,16 +20,20 @@ urlpatterns = [
     path('property/create/', views.property_create, name='property_create'),
     path('property/<int:pk>/edit/', views.property_edit, name='property_edit'),
 
-    # 👇 ДОБАВЬТЕ ЭТИ НОВЫЕ URLS
+    # Управление объектами
     path('property/<int:pk>/sold/', views.property_mark_sold, name='property_mark_sold'),
     path('property/<int:pk>/hide/', views.property_hide, name='property_hide'),
     path('property/<int:pk>/activate/', views.property_reactivate, name='property_reactivate'),
     path('property/<int:pk>/delete/', views.property_delete, name='property_delete'),
 
+    # Управление изображениями
+    path('property/image/<int:image_id>/delete/', views.delete_property_image, name='delete_property_image'),
+    path('property/image/<int:image_id>/set_main/', views.set_main_image, name='set_main_image'),
+
     # Сообщения
     path('messages/', views.message_list, name='message_list'),
-    path('messages/send/', views.send_message, name='message_send'),
-    path('messages/send/<int:user_id>/', views.send_message, name='message_send_to'),
+    path('messages/send/', views.send_message, name='send_message'),
+    path('messages/send/<int:user_id>/', views.send_message, name='message_send_to'),  # 👈 ДОБАВЬТЕ ЭТУ СТРОКУ
     path('messages/chat/<int:user_id>/', views.chat_with_user, name='chat_with_user'),
 
     # Черный список

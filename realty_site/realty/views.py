@@ -210,37 +210,27 @@ def property_detail(request, pk):
 def property_create(request):
     """Создание нового объекта недвижимости"""
     if request.method == 'POST':
-        form = PropertyForm(request.POST)
+        form = PropertyForm(request.POST, request.FILES)  # 👈 Добавьте request.FILES
         if form.is_valid():
             property_obj = form.save(commit=False)
             property_obj.created_by = request.user
             property_obj.save()
 
             # Обработка изображений
-            images = request.FILES.getlist('images')
-            print(f"🔍 DEBUG: Получено файлов: {len(images)}")  # Для отладки
+            images = request.FILES.getlist('images')  # 👈 getlist для множественных файлов
+            print(f"🔍 DEBUG: Получено файлов: {len(images)}")
 
             for i, image in enumerate(images):
-                print(f"🔍 DEBUG: Обработка файла: {image.name}")  # Для отладки
+                print(f"🔍 DEBUG: Обработка файла: {image.name}")
                 PropertyImage.objects.create(
                     property=property_obj,
                     image=image,
                     is_main=(i == 0)  # Первое изображение - основное
                 )
 
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'redirect_url': f'/property/{property_obj.pk}/'
-                })
             return redirect('property_detail', pk=property_obj.pk)
         else:
-            print(f"🔍 DEBUG: Ошибки формы: {form.errors}")  # Для отладки
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                errors = {}
-                for field, error_list in form.errors.items():
-                    errors[field] = [{'message': error} for error in error_list]
-                return JsonResponse({'success': False, 'errors': errors})
+            print(f"🔍 DEBUG: Ошибки формы: {form.errors}")
 
     form = PropertyForm()
     return render(request, 'realty/property_form.html', {'form': form})
@@ -251,12 +241,12 @@ def property_edit(request, pk):
     property_obj = get_object_or_404(Property, pk=pk, created_by=request.user)
 
     if request.method == 'POST':
-        form = PropertyForm(request.POST, request.FILES, instance=property_obj)  # Добавьте request.FILES
+        form = PropertyForm(request.POST, request.FILES, instance=property_obj)
         if form.is_valid():
             property_obj = form.save()
 
-            # Обработка новых изображений
-            new_images = request.FILES.getlist('images')
+            # Обработка НОВЫХ изображений
+            new_images = request.FILES.getlist('images')  # 👈 getlist
             for image in new_images:
                 PropertyImage.objects.create(property=property_obj, image=image)
 
@@ -447,3 +437,32 @@ def property_delete(request, pk):
     property_obj.delete()
     messages.success(request, f'Объект "{property_obj.title}" удален')
     return redirect('profile')
+
+
+@login_required
+def delete_property_image(request, image_id):
+    """Удаление изображения объекта"""
+    image = get_object_or_404(PropertyImage, id=image_id)
+    # Проверяем, что пользователь - владелец объекта
+    if image.property.created_by != request.user:
+        return redirect('profile')
+
+    image.delete()
+    return redirect('property_edit', pk=image.property.pk)
+
+
+@login_required
+def set_main_image(request, image_id):
+    """Установка изображения как основного"""
+    image = get_object_or_404(PropertyImage, id=image_id)
+    # Проверяем, что пользователь - владелец объекта
+    if image.property.created_by != request.user:
+        return redirect('profile')
+
+    # Снимаем флаг основного со всех изображений
+    PropertyImage.objects.filter(property=image.property).update(is_main=False)
+    # Устанавливаем флаг основного для выбранного
+    image.is_main = True
+    image.save()
+
+    return redirect('property_edit', pk=image.property.pk)
