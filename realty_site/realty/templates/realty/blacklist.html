@@ -1,0 +1,41 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-primary mb-4">Черный список</h2>
+                
+                {% if blacklisted_users %}
+                <div class="list-group">
+                    {% for blacklist in blacklisted_users %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">{{ blacklist.blocked_user.get_full_name|default:blacklist.blocked_user.username }}</h6>
+                            <small class="text-muted">{{ blacklist.blocked_user.email }}</small>
+                            <br>
+                            <small class="text-muted">Добавлен: {{ blacklist.created_at|date:"d.m.Y H:i" }}</small>
+                        </div>
+                        <form method="post" action="{% url 'blacklist_remove' blacklist.blocked_user.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Разблокировать</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Черный список пуст</p>
+                    <p>Здесь будут отображаться пользователи, которых вы заблокировали</p>
+                </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <a href="{% url 'profile' %}" class="btn btn-secondary">Назад в профиль</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

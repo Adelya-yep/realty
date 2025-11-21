@@ -4,7 +4,7 @@ from . import views
 
 urlpatterns = [
     path('', views.home, name='home'),
-    path('about/', views.about, name='about'),
+    # path('about/', views.about, name='about'),
 
     # Аутентификация
     path('login/', auth_views.LoginView.as_view(template_name='realty/login.html'), name='login'),
@@ -37,5 +37,7 @@ urlpatterns = [
     path('messages/chat/<int:user_id>/', views.chat_with_user, name='chat_with_user'),
 
     # Черный список
+    path('blacklist/', views.blacklist_view, name='blacklist_view'),
     path('blacklist/add/<int:user_id>/', views.blacklist_add, name='blacklist_add'),
+    path('blacklist/remove/<int:user_id>/', views.blacklist_remove, name='blacklist_remove'),
 ]

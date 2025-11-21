@@ -11,6 +11,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from .models import CustomUser, Property, Comment, Message, Blacklist, PropertyImage
 from .forms import CustomUserCreationForm, ProfileUpdateForm, PropertyForm, CommentForm, MessageForm
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+from django.http import JsonResponse
 
 
 def generate_captcha():
@@ -323,25 +326,39 @@ def message_list(request):
 def chat_with_user(request, user_id):
     """Чат с конкретным пользователем"""
     # Очищаем системные сообщения при входе в чат
-    from django.contrib import messages as message_framework  # 👈 Переименовываем импорт
+    from django.contrib import messages as message_framework
     storage = message_framework.get_messages(request)
     for message in storage:
         pass  # Просто читаем все сообщения чтобы очистить
 
     other_user = get_object_or_404(CustomUser, id=user_id)
 
+    # 👇 ДОБАВЛЯЕМ ПРОВЕРКУ ЧЕРНОГО СПИСКА
+    # Проверяем, не заблокировал ли нас пользователь
+    if Blacklist.objects.filter(user=other_user, blocked_user=request.user).exists():
+        message_framework.error(request, 'Вы не можете писать этому пользователю.')
+        return redirect('message_list')
+
+    # Проверяем, не заблокировали ли мы пользователя
+    if Blacklist.objects.filter(user=request.user, blocked_user=other_user).exists():
+        message_framework.warning(request, 'Этот пользователь находится в вашем черном списке.')
+
     if request.method == 'POST':
         content = request.POST.get('content', '').strip()
         if content:
-            Message.objects.create(
-                sender=request.user,
-                receiver=other_user,
-                content=content
-            )
+            # 👇 ПРОВЕРЯЕМ ПЕРЕД ОТПРАВКОЙ
+            if not Blacklist.objects.filter(user=other_user, blocked_user=request.user).exists():
+                Message.objects.create(
+                    sender=request.user,
+                    receiver=other_user,
+                    content=content
+                )
+            else:
+                message_framework.error(request, 'Не удалось отправить сообщение. Пользователь заблокировал вас.')
             return redirect('chat_with_user', user_id=user_id)
 
     # Получаем все сообщения между пользователями
-    messages_list = Message.objects.filter(  # 👈 Переименовываем переменную
+    messages_list = Message.objects.filter(
         Q(sender=request.user, receiver=other_user) | Q(sender=other_user, receiver=request.user)
     ).order_by('created_at')
 
@@ -350,15 +367,20 @@ def chat_with_user(request, user_id):
 
     return render(request, 'realty/chat.html', {
         'other_user': other_user,
-        'messages': messages_list  # 👈 Теперь передаем messages_list
+        'messages': messages_list
     })
 
 
 @login_required
 def send_message(request, user_id=None):
-    """Отправить сообщение - простая форма"""
+    """Отправить сообщение с проверкой черного списка"""
     if user_id:
         other_user = get_object_or_404(CustomUser, id=user_id)
+
+        # Проверяем, не заблокирован ли пользователь
+        if Blacklist.objects.filter(user=other_user, blocked_user=request.user).exists():
+            messages.error(request, 'Вы не можете отправить сообщение этому пользователю.')
+            return redirect('message_list')
 
         if request.method == 'POST':
             content = request.POST.get('content', '').strip()
@@ -370,29 +392,53 @@ def send_message(request, user_id=None):
                 )
                 return redirect('chat_with_user', user_id=user_id)
 
+        # ИЗМЕНИТЕ ЭТУ СТРОКУ: simple_message.html → send_message.html
         return render(request, 'realty/send_message.html', {'other_user': other_user})
 
-    # Если user_id не передан - показать выбор пользователя
     users = CustomUser.objects.exclude(id=request.user.id)
     return render(request, 'realty/choose_user.html', {'users': users})
-
 @login_required
 def blacklist_add(request, user_id):
+    """Добавить пользователя в черный список"""
     user_to_block = get_object_or_404(CustomUser, id=user_id)
 
     if user_to_block != request.user:
-        Blacklist.objects.get_or_create(user=request.user, blocked_user=user_to_block)
-        Message.objects.filter(sender=user_to_block, receiver=request.user).delete()
+        # Добавляем в черный список
+        Blacklist.objects.get_or_create(
+            user=request.user,
+            blocked_user=user_to_block
+        )
+
+        # Удаляем все сообщения от этого пользователя
+        Message.objects.filter(
+            sender=user_to_block,
+            receiver=request.user
+        ).delete()
+
+        messages.success(request, f'Пользователь {user_to_block.username} добавлен в черный список. Сообщения удалены.')
 
     return redirect('profile')
 
 
-def about(request):
-    return render(request, 'realty/about.html')
+@login_required
+def blacklist_remove(request, user_id):
+    """Удалить пользователя из черного списка"""
+    user_to_unblock = get_object_or_404(CustomUser, id=user_id)
 
-from django.contrib.auth import logout
-from django.http import JsonResponse
+    Blacklist.objects.filter(
+        user=request.user,
+        blocked_user=user_to_unblock
+    ).delete()
 
+    messages.success(request, f'Пользователь {user_to_unblock.username} удален из черного списка.')
+    return redirect('profile')
+
+
+@login_required
+def blacklist_view(request):
+    """Просмотр черного списка"""
+    blacklisted_users = Blacklist.objects.filter(user=request.user).select_related('blocked_user')
+    return render(request, 'realty/blacklist.html', {'blacklisted_users': blacklisted_users})
 def custom_logout(request):
     """Кастомный выход из системы с поддержкой AJAX"""
     if request.method == 'POST':

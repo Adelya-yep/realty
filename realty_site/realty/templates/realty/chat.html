@@ -12,10 +12,21 @@
 </style>
 
 <div class="card">
-    <div class="card-header">
-        <h4>Чат с {{ other_user.get_full_name|default:other_user.username }}</h4>
+    <div class="card-header d-flex justify-content-between align-items-center">
+    <div>
+        <h4 class="mb-0">Чат с {{ other_user.get_full_name|default:other_user.username }}</h4>
+    </div>
+    <div>
+        <form method="post" action="{% url 'blacklist_add' other_user.id %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-warning"
+                    onclick="return confirm('Заблокировать этого пользователя? Все сообщения будут удалены.')">
+                🚫 Заблокировать
+            </button>
+        </form>
         <a href="{% url 'message_list' %}" class="btn btn-sm btn-outline-secondary">← Назад</a>
     </div>
+</div>
 
     <div class="card-body" style="height: 400px; overflow-y: auto;">
         {% for message in messages %}

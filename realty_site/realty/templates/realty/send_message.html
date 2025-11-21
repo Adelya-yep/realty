@@ -1,0 +1,29 @@
+{% extends 'realty/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-primary mb-4">Написать сообщение</h2>
+                
+                <p class="mb-3">Кому: <strong>{{ other_user.get_full_name|default:other_user.username }}</strong></p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Сообщение *</label>
+                        <textarea name="content" class="form-control" rows="4" placeholder="Введите ваше сообщение..." required></textarea>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Отправить</button>
+                        <a href="{% url 'property_list' %}" class="btn btn-secondary">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
